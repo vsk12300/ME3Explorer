@@ -10,6 +10,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
+using AdonisUI;
+using Be.Windows.Forms;
 using ME1Explorer.Unreal;
 using ME2Explorer.Unreal;
 using ME3Explorer.ASI;
@@ -144,7 +146,14 @@ namespace ME3Explorer
 
             System.Windows.Controls.ToolTipService.ShowDurationProperty.OverrideMetadata(typeof(DependencyObject), new FrameworkPropertyMetadata(int.MaxValue));
 
-            
+            if (ME3Explorer.Properties.Settings.Default.DarkMode)
+            {
+                // Load dark mode dictionary
+                AdonisUI.ResourceLocator.SetColorScheme(Application.Current.Resources, ResourceLocator.DarkColorScheme);
+                Color backColor = (Color)Application.Current.FindResource(AdonisUI.Colors.Layer0BackgroundColor);
+                Color foreColor = (Color)Application.Current.FindResource(AdonisUI.Colors.ForegroundColor);
+                HexBox.SetColors(backColor.ToWinformsColor(), foreColor.ToWinformsColor());
+            }
 
             Action actionDelegate = HandleCommandLineJumplistCall(Environment.GetCommandLineArgs(), out int exitCode);
             if (actionDelegate == null)
@@ -187,7 +196,7 @@ namespace ME3Explorer
             exitCode = 0;
             if (args.Length < 2)
             {
-                return ()=>{}; //do nothing delgate. Will do nothing when main UI loads
+                return () => { }; //do nothing delgate. Will do nothing when main UI loads
             }
 
             string arg = args[1];

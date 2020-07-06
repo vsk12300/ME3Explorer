@@ -17,6 +17,7 @@
              xmlns:properties="clr-namespace:ME3Explorer.Properties"
                             xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
                             xmlns:fa="http://schemas.fontawesome.com/icons/"
+                            xmlns:adonisUi="clr-namespace:AdonisUI;assembly=AdonisUI"
                             DataContext="{Binding RelativeSource={RelativeSource Self}}"
              d:DesignWidth="800"
              d:DesignHeight="500">
@@ -107,7 +108,7 @@
                       BorderThickness="5,0"
                       BorderBrush="Transparent"
                       Panel.ZIndex="60"/>
-            <SharedUI:StretchingTreeView x:Name="Interpreter_TreeView" Grid.Row="0" Grid.Column="2" Width="Auto" 
+            <SharedUI:StretchingTreeView  x:Name="Interpreter_TreeView" Grid.Row="0" Grid.Column="2" Width="Auto" Background="{DynamicResource {x:Static adonisUi:Brushes.Layer1BackgroundBrush}}"
                                          FontFamily="Consolas" SelectedItemChanged="Interpreter_TreeViewSelectedItemChanged" 
                                          ItemsSource="{Binding PropertyNodes}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" 
                                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
@@ -249,7 +250,7 @@
                       Color="Black" />
                 </SharedUI:StretchingTreeView.Resources>
                 <SharedUI:StretchingTreeView.ItemContainerStyle>
-                    <Style TargetType="{x:Type TreeViewItem}">
+                    <Style TargetType="TreeViewItem" BasedOn="{StaticResource TreeViewItemStyle}">
                         <Setter Property="IsSelected" Value="{Binding Path=IsSelected, Mode=TwoWay}" />
                         <Setter Property="IsExpanded" Value="{Binding Path=IsExpanded, Mode=TwoWay}" />
                     </Style>

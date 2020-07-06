@@ -25,6 +25,7 @@
         xmlns:meshplorer="clr-namespace:ME3Explorer.Meshplorer"
         xmlns:materialViewer="clr-namespace:ME3Explorer.MaterialViewer"
         xmlns:particleSystems="clr-namespace:ME3Explorer.ParticleSystems"
+        xmlns:adonisUi="clr-namespace:AdonisUI;assembly=AdonisUI"
         Title="Package Editor" Height="720" Width="1100"
         Icon="..\Resources\packageeditorwpf_256x256.ico"
         DragOver="Window_DragOver"
@@ -32,6 +33,9 @@
         AllowDrop="True"
         PreviewMouseUp="Window_MouseUp"
         d:DataContext="{Binding RelativeSource={RelativeSource Self}}">
+    <Window.Style>
+        <Style TargetType="Window" BasedOn="{StaticResource {x:Type Window}}"/>
+    </Window.Style>
     <Window.Resources>
         <ItemsPanelTemplate x:Key="VSP">
             <VirtualizingStackPanel/>
@@ -39,12 +43,12 @@
         <Converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <Converters:NullEnabledConverter x:Key="NullEnabledConverter"/>
         <Converters:NullVisibilityConverter x:Key="NullVisibilityConverter"/>
-        <Converters:PackageEditorWPFActiveViewHighlightConverter x:Key="PackageEditorWPFActiveViewHighlightConverter"/>
         <Converters:ObjectStructPropertyTypeConverter x:Key="ObjectStructPropertyTypeConverter"/>
         <Converters:EntryFileTypeConverter x:Key="EntryFileTypeConverter"/>
         <Converters:EntryFileTypeIconPathConverter x:Key="EntryFileTypeIconPathConverter"/>
         <Converters:EmbeddedFileToolTipConverter x:Key="EmbeddedFileToolTipConverter"/>
         <Converters:GameTypeConverter x:Key="GameTypeConverter"/>
+        <Converters:CurrentViewMatchesTypeConverter x:Key="CurrentViewMatchesTypeConverter"/>
         <ContextMenu x:Key="EntryContextMenu">
             <MenuItem Header="Find usages" ToolTip="Finds places where this name is used" Command="{Binding FindNameUsagesCommand}" SharedUI:Bindings.VisibilityToEnabled="True"/>
             <MenuItem Header="Attempt to find definition of import" ToolTip="Attempts to find the likely source of this import. Note that due to how unreal engine handles memory this may not be the one used." Command="{Binding ResolveImportCommand}" SharedUI:Bindings.VisibilityToEnabled="True"/>
@@ -188,6 +192,9 @@
                     <MenuItem Name="TouchComfyMode_MenuItem" Header="Touch Comfy Mode" Click="TouchComfyMode_Clicked" 
                               IsChecked="{Binding Source={x:Static properties:Settings.Default}, Path=TouchComfyMode, Mode=TwoWay}" 
                               ToolTip="Makes Package Editor a bit easier to use on touch devices" StaysOpenOnClick="True"/>
+                    <MenuItem Name="DarkMode_MenuItem" Header="Dark Mode" Click="DarkMode_Clicked" 
+                              IsChecked="{Binding Source={x:Static properties:Settings.Default}, Path=DarkMode, Mode=TwoWay}" 
+                              ToolTip="Makes toolset use dark theme, where supported" StaysOpenOnClick="True"/>
                     <MenuItem Name="AssociatePccSfm_MenuItem" Header="Associate PCC/SFM files" Click="AssociatePCCSFM_Clicked" 
                               ToolTip="Makes Package Editor open when you double click PCC/SFM files in Windows Explorer"/>
                     <MenuItem Name="AssociateUPKUDK_MenuItem" Header="Associate UPK/UDK files" Click="AssociateUPKUDK_Clicked" 
@@ -286,11 +293,16 @@
                     <ColumnDefinition Width="5" />
                     <ColumnDefinition Width="6*" />
                 </Grid.ColumnDefinitions>
-                <ToolBar ToolBarTray.IsLocked="True" Grid.Row="0" Grid.ColumnSpan="3">
-                    <Button Content="Names" Padding="7,0" VerticalAlignment="Stretch" ToolTip="View Name table" Click="NamesView_Click" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}" Background="{Binding CurrentView, Converter={StaticResource PackageEditorWPFActiveViewHighlightConverter}, ConverterParameter='Names'}" />
+                <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.ColumnSpan="3">
+                    <ToggleButton Style="{DynamicResource {x:Static adonisUi:Styles.DefaultToAccentToggleButton}}" Name="NameTab_Button" Content="Names" Padding="7,0" VerticalAlignment="Stretch" ToolTip="View Name table" Command="{Binding ViewTabCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Self}}"  IsChecked="{Binding CurrentView, Converter={StaticResource CurrentViewMatchesTypeConverter}, ConverterParameter='Names'}"/>
+                    <ToggleButton Style="{DynamicResource {x:Static adonisUi:Styles.DefaultToAccentToggleButton}}" Name="ImportsTab_Button"  Content="Imports" Padding="7,0" VerticalAlignment="Stretch" ToolTip="View Imports table" Command="{Binding ViewTabCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Self}}" IsChecked="{Binding CurrentView, Converter={StaticResource CurrentViewMatchesTypeConverter}, ConverterParameter='Imports'}"/>
+                    <ToggleButton Style="{DynamicResource {x:Static adonisUi:Styles.DefaultToAccentToggleButton}}" Name="ExportsTab_Button" Content="Exports" Padding="7,0" VerticalAlignment="Stretch" ToolTip="View Exports table" Command="{Binding ViewTabCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Self}}" IsChecked="{Binding CurrentView, Converter={StaticResource CurrentViewMatchesTypeConverter}, ConverterParameter='Exports'}"/>
+                    <ToggleButton Style="{DynamicResource {x:Static adonisUi:Styles.DefaultToAccentToggleButton}}" Name="TreeTab_Button" Content="Tree View" Padding="7,0" VerticalAlignment="Stretch" ToolTip="View Combined Imports/Exports in logical tree layout" Command="{Binding ViewTabCommand}" CommandParameter="{Binding RelativeSource={RelativeSource Self}}" IsChecked="{Binding CurrentView, Converter={StaticResource CurrentViewMatchesTypeConverter}, ConverterParameter='Tree'}" />
+
+                    <!--<Button Content="Names" Padding="7,0" VerticalAlignment="Stretch" ToolTip="View Name table" Click="NamesView_Click" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}" Background="{Binding CurrentView, Converter={StaticResource PackageEditorWPFActiveViewHighlightConverter}, ConverterParameter='Names'}" />
                     <Button Content="Imports" Padding="7,0" VerticalAlignment="Stretch" Click="ImportsView_Click" ToolTip="View Imports table" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}"  Background="{Binding CurrentView, Converter={StaticResource PackageEditorWPFActiveViewHighlightConverter}, ConverterParameter='Imports'}"/>
                     <Button Content="Exports" Padding="7,0" VerticalAlignment="Stretch" Click="ExportsView_Click" ToolTip="View Exports Table" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}"  Background="{Binding CurrentView, Converter={StaticResource PackageEditorWPFActiveViewHighlightConverter}, ConverterParameter='Exports'}"/>
-                    <Button Content="Tree View" Padding="7,0" VerticalAlignment="Stretch"  Click="TreeView_Click" ToolTip="View imports and exports in package hierarchy" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}"  Background="{Binding CurrentView, Converter={StaticResource PackageEditorWPFActiveViewHighlightConverter}, ConverterParameter='Tree'}"/>
+                    <Button Content="Tree View" Padding="7,0" VerticalAlignment="Stretch"  Click="TreeView_Click" ToolTip="View imports and exports in package hierarchy" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}"  Background="{Binding CurrentView, Converter={StaticResource PackageEditorWPFActiveViewHighlightConverter}, ConverterParameter='Tree'}"/>-->
                     <Separator/>
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="5,0,0,0" Height="24">
                         <xctk:WatermarkComboBox Watermark="Class Selector" Name="ClassDropdown_Combobox" Width="140" ItemsPanel="{StaticResource VSP}" ItemsSource="{Binding ClassDropdownList}" IsTextSearchEnabled="True" KeyUp="ClassDropdown_Combobox_OnKeyUpHandler" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}" VerticalContentAlignment="Center"/>
@@ -307,8 +319,11 @@
                     </StackPanel>
                     <!--This is outside so that it doesn't hide the whole box if it is too long to show -->
                     <TextBlock Name="Goto_Preview_TextBox" VerticalAlignment="Center" Foreground="Gray" Margin="5,0,0,0"/>
-                </ToolBar>
-                <SharedUI:ListBoxScroll x:Name="LeftSide_ListView" Grid.Column="0" Grid.Row="1" IsTextSearchEnabled="True" SelectionChanged="LeftSide_SelectedItemChanged" ItemsSource="{Binding LeftSideList_ItemsSource}" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" AlternationCount="2" HorizontalContentAlignment="Stretch">
+                </StackPanel>
+                <SharedUI:ListBoxScroll x:Name="LeftSide_ListView" Grid.Column="0" Grid.Row="1" IsTextSearchEnabled="True" Background="{DynamicResource {x:Static adonisUi:Brushes.Layer2BackgroundBrush}}"
+                                        SelectionChanged="LeftSide_SelectedItemChanged" ItemsSource="{Binding LeftSideList_ItemsSource}" 
+                                        VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling" 
+                                        AlternationCount="2" HorizontalContentAlignment="Stretch">
                     <SharedUI:ListBoxScroll.Resources>
                         <DataTemplate DataType="{x:Type global:PackageEditorWPF+IndexedName}">
                             <StackPanel Orientation="Horizontal" ContextMenu="{StaticResource EntryContextMenu}" Background="Transparent">
@@ -351,9 +366,16 @@
                             <VirtualizingStackPanel />
                         </ItemsPanelTemplate>
                     </ListBox.ItemsPanel>
-
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource ListBoxItemStyle}">
+                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                        </Style>
+                    </ListBox.ItemContainerStyle>
                 </SharedUI:ListBoxScroll>
-                <TreeView x:Name="LeftSide_TreeView" Grid.Column="0" Grid.Row="1" FontFamily="Consolas" Visibility="Collapsed" dd:DragDrop.IsDragSource="True" dd:DragDrop.IsDropTarget="True" dd:DragDrop.DropHandler="{Binding}" ItemsSource="{Binding AllTreeViewNodesX}" FocusManager.IsFocusScope="True" VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling">
+                <TreeView x:Name="LeftSide_TreeView" Grid.Column="0" Grid.Row="1" FontFamily="Consolas" Visibility="Collapsed"
+                          dd:DragDrop.IsDragSource="True" dd:DragDrop.IsDropTarget="True" dd:DragDrop.DropHandler="{Binding}" 
+                          ItemsSource="{Binding AllTreeViewNodesX}" FocusManager.IsFocusScope="True" VirtualizingStackPanel.IsVirtualizing="True"
+                          VirtualizingStackPanel.VirtualizationMode="Recycling">
                     <TreeView.Resources>
                         <HierarchicalDataTemplate DataType="{x:Type global:TreeViewEntry}" ItemsSource="{Binding Sublinks}">
                             <Border Tag="{Binding RelativeSource={RelativeSource AncestorType={x:Type Window}}}" ContextMenu="{StaticResource EntryContextMenu}" Background="Transparent"  Padding="{Binding Path=(SharedUI:TouchComfySettings.TreeViewMargin)}">
@@ -403,7 +425,7 @@
 
                     </TreeView.Resources>
                     <TreeView.ItemContainerStyle>
-                        <Style TargetType="{x:Type TreeViewItem}">
+                        <Style TargetType="TreeViewItem" BasedOn="{StaticResource TreeViewItemStyle}">
                             <Setter Property="IsSelected" Value="{Binding Path=IsSelected, Mode=TwoWay}" />
                             <Setter Property="IsExpanded" Value="{Binding Path=IsExpanded, Mode=TwoWay}" />
                             <!--<EventSetter Event="RequestBringIntoView" Handler="TreeViewItem_RequestBringIntoView"/>

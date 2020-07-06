@@ -5,6 +5,7 @@ MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ME3Explorer", "ME3Explorer\ME3Explorer.csproj", "{60E91B60-FCEE-4B36-967E-4022D8A54F2F}"
 	ProjectSection(ProjectDependencies) = postProject
 		{947A6918-AD71-4F61-BC63-8DA7997E10E6} = {947A6918-AD71-4F61-BC63-8DA7997E10E6}
+		{4A96478F-A70E-4BF0-8264-1DE9FBFB041F} = {4A96478F-A70E-4BF0-8264-1DE9FBFB041F}
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Be.Windows.Forms.HexBox", "Be.Windows.Forms.HexBox\Be.Windows.Forms.HexBox.csproj", "{26C5F25F-B450-4CAF-AD8B-B8D11AE73457}"
@@ -16,6 +17,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Helpers", "Helpers\Helpers.csproj", "{CCF590B8-E6BF-4D31-85BF-AFEA7D075EDF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Direct3D9 Shader Model 3 Disassembler", "Direct3D9 Shader Model 3 Disassembler\Direct3D9 Shader Model 3 Disassembler.csproj", "{53AF9E1D-16BC-47A5-884E-5CE72ADCB805}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdonisUI", "AdonisUI\AdonisUI.csproj", "{4A96478F-A70E-4BF0-8264-1DE9FBFB041F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AdonisUI.ClassicTheme", "AdonisUI.ClassicTheme\AdonisUI.ClassicTheme.csproj", "{8DE6956D-7E7A-481A-BD36-90524C4A7C05}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DotNetProjects.Wpf.Extended.Toolkit", "WpfExtendedToolkit-Extended\Src\Xceed.Wpf.Toolkit\DotNetProjects.Wpf.Extended.Toolkit.csproj", "{39A8FF72-605F-4C56-949C-4906C0BCFD8E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -95,6 +102,30 @@ Global
 		{53AF9E1D-16BC-47A5-884E-5CE72ADCB805}.Release|x64.ActiveCfg = Release|x64
 		{53AF9E1D-16BC-47A5-884E-5CE72ADCB805}.Release|x64.Build.0 = Release|x64
 		{53AF9E1D-16BC-47A5-884E-5CE72ADCB805}.Release|x86.ActiveCfg = Release|x64
+		{4A96478F-A70E-4BF0-8264-1DE9FBFB041F}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{4A96478F-A70E-4BF0-8264-1DE9FBFB041F}.Debug|x64.ActiveCfg = Debug|x64
+		{4A96478F-A70E-4BF0-8264-1DE9FBFB041F}.Debug|x64.Build.0 = Debug|x64
+		{4A96478F-A70E-4BF0-8264-1DE9FBFB041F}.Debug|x86.ActiveCfg = Debug|x64
+		{4A96478F-A70E-4BF0-8264-1DE9FBFB041F}.Release|Any CPU.ActiveCfg = Release|x64
+		{4A96478F-A70E-4BF0-8264-1DE9FBFB041F}.Release|x64.ActiveCfg = Release|x64
+		{4A96478F-A70E-4BF0-8264-1DE9FBFB041F}.Release|x64.Build.0 = Release|x64
+		{4A96478F-A70E-4BF0-8264-1DE9FBFB041F}.Release|x86.ActiveCfg = Release|x64
+		{8DE6956D-7E7A-481A-BD36-90524C4A7C05}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{8DE6956D-7E7A-481A-BD36-90524C4A7C05}.Debug|x64.ActiveCfg = Debug|x64
+		{8DE6956D-7E7A-481A-BD36-90524C4A7C05}.Debug|x64.Build.0 = Debug|x64
+		{8DE6956D-7E7A-481A-BD36-90524C4A7C05}.Debug|x86.ActiveCfg = Debug|x64
+		{8DE6956D-7E7A-481A-BD36-90524C4A7C05}.Release|Any CPU.ActiveCfg = Release|x64
+		{8DE6956D-7E7A-481A-BD36-90524C4A7C05}.Release|x64.ActiveCfg = Release|x64
+		{8DE6956D-7E7A-481A-BD36-90524C4A7C05}.Release|x64.Build.0 = Release|x64
+		{8DE6956D-7E7A-481A-BD36-90524C4A7C05}.Release|x86.ActiveCfg = Release|x64
+		{39A8FF72-605F-4C56-949C-4906C0BCFD8E}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{39A8FF72-605F-4C56-949C-4906C0BCFD8E}.Debug|x64.ActiveCfg = Debug|x64
+		{39A8FF72-605F-4C56-949C-4906C0BCFD8E}.Debug|x64.Build.0 = Debug|x64
+		{39A8FF72-605F-4C56-949C-4906C0BCFD8E}.Debug|x86.ActiveCfg = Debug|x64
+		{39A8FF72-605F-4C56-949C-4906C0BCFD8E}.Release|Any CPU.ActiveCfg = Release|x64
+		{39A8FF72-605F-4C56-949C-4906C0BCFD8E}.Release|x64.ActiveCfg = Release|x64
+		{39A8FF72-605F-4C56-949C-4906C0BCFD8E}.Release|x64.Build.0 = Release|x64
+		{39A8FF72-605F-4C56-949C-4906C0BCFD8E}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

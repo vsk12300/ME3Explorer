@@ -38,6 +38,20 @@ namespace ME3Explorer.SharedUI.Converters
         }
     }
 
+    [ValueConversion(typeof(PackageEditorWPF.CurrentViewMode), typeof(bool))]
+    public class CurrentViewMatchesTypeConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            return value.ToString() == (string) parameter;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {    // Don't need any convert back
+            return null;
+        }
+    }
+
     [ValueConversion(typeof(ExportEntry), typeof(string))]
     public class ObjectStructPropertyTypeConverter : IValueConverter
     {

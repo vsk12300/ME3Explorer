@@ -317,8 +317,8 @@ namespace ME3Explorer
             }
         }
 
-        private static SolidColorBrush ImportEntryBrush => SystemColors.GrayTextBrush;
-        private static SolidColorBrush ExportEntryBrush => SystemColors.ControlTextBrush;
+        private static SolidColorBrush ImportEntryBrush => Application.Current.FindResource(AdonisUI.Brushes.SlightlyDimmedForegroundBrush) as SolidColorBrush;
+        private static SolidColorBrush ExportEntryBrush => Application.Current.FindResource(AdonisUI.Brushes.ForegroundBrush) as SolidColorBrush;
 
         public override string ToString()
         {

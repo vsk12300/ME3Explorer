@@ -29,6 +29,8 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
+using AdonisUI;
+using Be.Windows.Forms;
 using DocumentFormat.OpenXml.Office2010.PowerPoint;
 using Gammtek.Conduit.Extensions.IO;
 using Gammtek.Conduit.IO;
@@ -42,6 +44,7 @@ using ME3Explorer.Unreal.BinaryConverters;
 using Microsoft.AppCenter.Analytics;
 using UsefulThings;
 using static ME3Explorer.Unreal.UnrealFlags;
+using Colors = AdonisUI.Colors;
 using Guid = System.Guid;
 
 namespace ME3Explorer
@@ -248,8 +251,10 @@ namespace ME3Explorer
         public ICommand ReplaceNamesCommand { get; set; }
         public ICommand NavigateToEntryCommand { get; set; }
         public ICommand ResolveImportCommand { get; set; }
+        public ICommand ViewTabCommand { get; set; }
         private void LoadCommands()
         {
+            ViewTabCommand = new RelayCommand(SetActiveTab, (object j) => PackageIsLoaded());
             CompareToUnmoddedCommand = new GenericCommand(CompareUnmodded, CanCompareToUnmodded);
             ComparePackagesCommand = new GenericCommand(ComparePackages, PackageIsLoaded);
             ExportAllDataCommand = new GenericCommand(ExportAllData, ExportIsSelected);
@@ -302,6 +307,23 @@ namespace ME3Explorer
             NavigateToEntryCommand = new RelayCommand(NavigateToEntry, CanNavigateToEntry);
             OpenMapInGameCommand = new GenericCommand(OpenMapInGame, () => PackageIsLoaded() && Pcc.Game != MEGame.UDK && Pcc.Exports.Any(exp => exp.ClassName == "Level"));
             ResolveImportCommand = new GenericCommand(OpenImportDefinition, ImportIsSelected);
+        }
+
+        private void SetActiveTab(object obj)
+        {
+            if (obj == NameTab_Button)
+            {
+                CurrentView = CurrentViewMode.Names;
+            } else if (obj == ImportsTab_Button)
+            {
+                CurrentView = CurrentViewMode.Imports;
+            } else if (obj == ExportsTab_Button)
+            {
+                CurrentView = CurrentViewMode.Exports;
+            } else if (obj == TreeTab_Button)
+            {
+                CurrentView = CurrentViewMode.Tree;
+            }
         }
 
         private void SetIndicesInTreeToZero()
@@ -4445,7 +4467,7 @@ namespace ME3Explorer
                                 {
                                     foundClasses.Add(exp.ClassName);
                                 }
-                                else if(exp.GetBinaryData().Any(b => b != 0))
+                                else if (exp.GetBinaryData().Any(b => b != 0))
                                 {
                                     foundClasses.Add(exp.ClassName);
                                     interestingExports.Add($"{exp.ClassName,30} #{exp.UIndex}: {filePath}");
@@ -5542,6 +5564,24 @@ namespace ME3Explorer
                 GoToNumber(index);
                 IsBackForwardsNavigationEvent = false;
             }
+        }
+
+        private void DarkMode_Clicked(object sender, RoutedEventArgs e)
+        {
+            Properties.Settings.Default.DarkMode = !Properties.Settings.Default.DarkMode;
+            Properties.Settings.Default.Save();
+            if (Properties.Settings.Default.DarkMode)
+            {
+                AdonisUI.ResourceLocator.SetColorScheme(Application.Current.Resources, ResourceLocator.DarkColorScheme);
+            }
+            else
+            {
+                AdonisUI.ResourceLocator.SetColorScheme(Application.Current.Resources, ResourceLocator.LightColorScheme);
+            }
+
+            Color backColor = (Color)Application.Current.FindResource(AdonisUI.Colors.Layer0BackgroundColor);
+            Color foreColor = (Color)Application.Current.FindResource(AdonisUI.Colors.ForegroundColor);
+            HexBox.SetColors(backColor.ToWinformsColor(), foreColor.ToWinformsColor());
         }
     }
 }
