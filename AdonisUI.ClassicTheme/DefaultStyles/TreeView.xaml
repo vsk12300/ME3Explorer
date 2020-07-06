@@ -88,14 +88,14 @@
                                           Grid.Column="1"
                                           ContentSource="Header"
                                           HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}">
-                            <ContentPresenter.Margin>
+                            <!--<ContentPresenter.Margin>
                                 <MultiBinding Converter="{x:Static adonisConverters:ValuesToThicknessConverter.Instance}">
                                     <Binding Source="0"/>
                                     <Binding Path="Padding.Top" RelativeSource="{RelativeSource TemplatedParent}"/>
                                     <Binding Path="Padding.Right" RelativeSource="{RelativeSource TemplatedParent}"/>
                                     <Binding Path="Padding.Bottom" RelativeSource="{RelativeSource TemplatedParent}"/>
                                 </MultiBinding>
-                            </ContentPresenter.Margin>
+                            </ContentPresenter.Margin>-->
                         </ContentPresenter>
 
                         <ItemsPresenter x:Name="ItemsHost"

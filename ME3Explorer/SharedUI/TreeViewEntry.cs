@@ -261,7 +261,7 @@ namespace ME3Explorer
                                 else if (fs.HasFlag("Native"))
                                 {
                                     var nativeIndex = EndianReader.ToInt16(data, data.Length - 6, ee.FileRef.Endian);
-                                    _subtext = "Native, index "+nativeIndex;
+                                    _subtext = "Native, index " + nativeIndex;
                                 }
                             }
 
@@ -317,8 +317,26 @@ namespace ME3Explorer
             }
         }
 
-        private static SolidColorBrush ImportEntryBrush => Application.Current.FindResource(AdonisUI.Brushes.SlightlyDimmedForegroundBrush) as SolidColorBrush;
-        private static SolidColorBrush ExportEntryBrush => Application.Current.FindResource(AdonisUI.Brushes.ForegroundBrush) as SolidColorBrush;
+        private static SolidColorBrush _cachedImportBrush;
+        private static SolidColorBrush ImportEntryBrush
+        {
+            get
+            {
+                if (_cachedImportBrush != null) return _cachedImportBrush;
+                _cachedImportBrush = Application.Current.FindResource(AdonisUI.Brushes.SlightlyDimmedForegroundBrush) as SolidColorBrush;
+                return _cachedImportBrush;
+            }
+        }
+        private static SolidColorBrush _cachedExportBrush;
+        private static SolidColorBrush ExportEntryBrush
+        {
+            get
+            {
+                if (_cachedExportBrush != null) return _cachedExportBrush;
+                _cachedExportBrush = Application.Current.FindResource(AdonisUI.Brushes.ForegroundBrush) as SolidColorBrush;
+                return _cachedExportBrush;
+            }
+        }
 
         public override string ToString()
         {
