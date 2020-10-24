@@ -204,31 +204,12 @@ namespace ME3Explorer.PackageEditor.Experiments
 
             #endregion
             // UPDATE THE CAMERA POSITION
-
-            // >> Read position data from ME1
-            //var gmplanet01 = me1em.GetUExport(940);
-            //var itm = me1em.GetUExport(966);
-            //var moon = me1em.GetUExport(936);
-            //var planetPos = SharedPathfinding.GetLocation(gmplanet01);
-            //var moonPos = SharedPathfinding.GetLocation(moon);
-            //var cameraPoint = SharedPathfinding.GetLocationFromVector(itm.GetProperty<StructProperty>("PosTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"));
-            //var cameraEuler = SharedPathfinding.GetLocationFromVector(itm.GetProperty<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"));
-
-            // Positions are same as ME2, use ME2 instead.
-
-
+            // Positions are same as ME2, use ME2 data.
 
             // >> Set camera position data ME3
             var rotPitch = 5704;
             var rotYaw = 29546;
             var rotRoll = 309;
-
-            // Fixes for ME3?
-            //rotPitch -= 150;
-            //rotRoll = 309;
-            //rotYaw = -36062;
-            //rotYaw += short.MaxValue / 2; //16K, 90 degrees
-            //rotRoll += short.MaxValue / 2; // 90 degrees
 
             var cameraActorExp = entryMenuPackage.GetUExport(111);
             var camProps = cameraActorExp.GetProperties();
@@ -240,19 +221,160 @@ namespace ME3Explorer.PackageEditor.Experiments
             camProps.AddOrReplaceProp(new FloatProperty(35, "FOVAngle"));
             cameraActorExp.WriteProperties(camProps);
 
+            // Fix interptrackmove1, which is just camera sitting there
             var cameraInterpTrackMove1 = entryMenuPackage.GetUExport(195);
             var properties = cameraInterpTrackMove1.GetProperties();
-            //var cameraEuler = SharedPathfinding.GetLocationFromVector(properties.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"));
+            bool panModeEnabled = true;
+            if (panModeEnabled)
+            {
+                var animationLength = 50; //how long a pan and back takes
+                var holdInterp = entryMenuPackage.GetUExport(164);
+                holdInterp.WriteProperty(new FloatProperty(animationLength, "InterpLength"));
+                Random random = new Random();
+                bool ZUp = false;
+                var eulerTrack = properties.GetProp<StructProperty>("EulerTrack");
+                if (eulerTrack != null)
+                {
+                    // These are some REAL DIRTY HACKS
+                    // So I don't have to WRITE MORE CODE
+                    // hopefully I don't REGRET THIS
+                    var points = eulerTrack.GetProp<ArrayProperty<StructProperty>>("Points"); //On vanilla there will be only one point.
+                    points.Add(points[0]); //Clone the euler track 2 times so we have 3 structs
+                    points.Add(points[0]);
+                    cameraInterpTrackMove1.WriteProperties(properties);
+                    // Refresh new props
+                    properties = cameraInterpTrackMove1.GetProperties();
+                    eulerTrack = properties.GetProp<StructProperty>("EulerTrack");
+                    points = eulerTrack.GetProp<ArrayProperty<StructProperty>>("Points");
 
-            SharedPathfinding.SetLocation(properties.GetProp<StructProperty>("PosTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"), -4926, 13212, -39964);
-            // This is a hack: It's actually rotation but it's all just vectors anyways.
-            SharedPathfinding.SetLocation(properties.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"), 0, 0, 0);
+                    //float startx = random.NextFloat(, -4800);
+                    float startPitch = random.NextFloat(25, 35);
+                    float startYaw = random.NextFloat(-195, -160);
+
+                    //startx = 1.736f;
+                    //startPitch = 31.333f;
+                    //startYaw = -162.356f;
+
+                    float peakx = 1.736f; //Roll. We shouldn't change this. This is the default roll
+                    float peakPitch = ZUp ? random.NextFloat(0, 30) : random.NextFloat(-15, 10); //Pitch
+                    float peakYaw = random.NextFloat(-215, -150);
+                    if (points != null)
+                    {
+                        int i = 0;
+                        foreach (StructProperty s in points)
+                        {
+                            var outVal = s.GetProp<StructProperty>("OutVal");
+                            if (outVal != null)
+                            {
+                                FloatProperty x = outVal.GetProp<FloatProperty>("X");
+                                FloatProperty y = outVal.GetProp<FloatProperty>("Y");
+                                FloatProperty z = outVal.GetProp<FloatProperty>("Z");
+                                //x.Value = i == 1 ? peakx : startx;
+                                y.Value = i == 1 ? peakPitch : startPitch;
+                                z.Value = i == 1 ? peakYaw : startYaw;
+                            }
+
+                            if (i > 0)
+                            {
+                                s.GetProp<FloatProperty>("InVal").Value = i == 1 ? (animationLength / 2) : animationLength;
+                            }
+
+                            i++;
+                        }
+
+                    }
+                }
+            }
+            else
+            {
+                SharedPathfinding.SetLocation(properties.GetProp<StructProperty>("PosTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"), -4926, 13212, -39964);
+                // This is a hack: It's actually rotation but it's all just vectors anyways.
+                SharedPathfinding.SetLocation(properties.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"), 0, 0, 0);
+            }
+
             //SharedPathfinding.SetRotation(properties.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"), rotRoll, rotYaw, rotPitch);
             properties.AddOrReplaceProp(new EnumProperty("IMF_RelativeToInitial", "EInterpTrackMoveFrame", MEGame.ME3, "MoveFrame"));
             cameraInterpTrackMove1.WriteProperties(properties);
-
-
         }
+
+        // This is heavily copied from ME1Randomizer
+        //private static void RandomizeSplash(Random random, IMEPackage me3EntryMenuPackage)
+        //{
+        //    var planetMaterial = me3EntryMenuPackage.GetUExport(1316);
+        //    RandomizePlanetMaterialInstanceConstant(planetMaterial, random);
+
+        //    //Corona
+        //    var coronaMaterial = entrymenu.getUExport(1317);
+        //    var props = coronaMaterial.GetProperties();
+        //    {
+        //        var scalars = props.GetProp<ArrayProperty<StructProperty>>("ScalarParameterValues");
+        //        var vectors = props.GetProp<ArrayProperty<StructProperty>>("VectorParameterValues");
+        //        scalars[0].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(0.01, 0.05); //Bloom
+        //        scalars[1].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(1, 10); //Opacity
+        //        RandomizeTint(random, vectors[0].GetProp<StructProperty>("ParameterValue"), false);
+        //    }
+        //    coronaMaterial.WriteProperties(props);
+
+        //    //CameraPan
+        //    //var cameraInterpData = me3EntryMenuPackage.GetUExport(946);
+        //    //var interpLength = cameraInterpData.GetProperty<FloatProperty>("InterpLength");
+        //    //float animationLength = random.NextFloat(60, 120);
+        //    //;
+        //    //interpLength.Value = animationLength;
+        //    //cameraInterpData.WriteProperty(interpLength);
+
+        //    //var cameraInterpTrackMove = me3EntryMenuPackage.GetUExport(967);
+        //    //cameraInterpTrackMove.Data = Utilities.GetEmbeddedStaticFilesBinaryFile("exportreplacements.InterpTrackMove967_EntryMenu_CameraPan.bin");
+        //    //props = cameraInterpTrackMove.GetProperties(forceReload: true);
+        //    //var posTrack = props.GetProp<StructProperty>("PosTrack");
+        //    //bool ZUp = false;
+        //    //if (posTrack != null)
+        //    //{
+        //    //    var points = posTrack.GetProp<ArrayProperty<StructProperty>>("Points");
+        //    //    float startx = random.NextFloat(-5100, -4800);
+        //    //    float starty = random.NextFloat(13100, 13300);
+        //    //    float startz = random.NextFloat(-39950, -39400);
+
+        //    //    startx = -4930;
+        //    //    starty = 13212;
+        //    //    startz = -39964;
+
+        //    //    float peakx = random.NextFloat(-5100, -4800);
+        //    //    float peaky = random.NextFloat(13100, 13300);
+        //    //    float peakz = random.NextFloat(-39990, -39920); //crazy small Z values here for some reason.
+        //    //    ZUp = peakz > startz;
+
+        //    //    if (points != null)
+        //    //    {
+        //    //        int i = 0;
+        //    //        foreach (StructProperty s in points)
+        //    //        {
+        //    //            var outVal = s.GetProp<StructProperty>("OutVal");
+        //    //            if (outVal != null)
+        //    //            {
+        //    //                FloatProperty x = outVal.GetProp<FloatProperty>("X");
+        //    //                FloatProperty y = outVal.GetProp<FloatProperty>("Y");
+        //    //                FloatProperty z = outVal.GetProp<FloatProperty>("Z");
+        //    //                if (i != 1) x.Value = startx;
+        //    //                y.Value = i == 1 ? peaky : starty;
+        //    //                z.Value = i == 1 ? peakz : startz;
+        //    //            }
+
+        //    //            if (i > 0)
+        //    //            {
+        //    //                s.GetProp<FloatProperty>("InVal").Value = i == 1 ? (animationLength / 2) : animationLength;
+        //    //            }
+
+        //    //            i++;
+        //    //        }
+        //    //    }
+        //    //}
+
+
+
+        //    cameraInterpTrackMove.WriteProperties(props);
+
+        //}
 
         public static void PortWiiUBSP()
         {
