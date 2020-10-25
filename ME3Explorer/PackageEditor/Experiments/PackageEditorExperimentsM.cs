@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using ME3Explorer.Pathfinding_Editor;
+using ME3Explorer.Sequence_Editor;
 using ME3Explorer.SharedUI;
 using ME3Explorer.Unreal.Classes;
 using ME3ExplorerCore.Gammtek.Extensions;
@@ -41,6 +42,8 @@ namespace ME3Explorer.PackageEditor.Experiments
             // Options
             bool panModeEnabled = true;
             bool randomTinting = false;
+            var animationLength = 80; //how long a pan and back takes
+            var mipFadeInDelay = 1f; //how long to black screen to let the mips stream in on start
 
             // Add names that must be indexed at specific values
             var foundName = entryMenuPackage.FindNameOrAdd("CIM_CurveAutoClamped"); //1300
@@ -70,6 +73,9 @@ namespace ME3Explorer.PackageEditor.Experiments
             lcExpsToPrune.Remove(27018);
             lcExpsToPrune.Remove(27029);
 
+            lcExpsToPrune.Remove(5839); // this will be moved around to be part of a toggle-able
+
+
             PruneUindexesFromSCA(lcActor, lcExpsToPrune.ToList());
 
             itemsToPort.Add(me3UncPlanet); //UNC53Planet
@@ -85,31 +91,27 @@ namespace ME3Explorer.PackageEditor.Experiments
                 if (item == lightCollectionExp) newLightCollection = newEntry as ExportEntry;
             }
 
-            // We also need to port in some directional lights, but they must be toggle-able
-            //These provide global lighting and will take significant work to make them turn off when we fade out.
-            lcExpsToPrune.Remove(5839);
-            lcExpsToPrune.Remove(5840);
+            // We also need to port in some directional lights, but they must be toggle-able. We will take the SLCA DLC and set them as the components for these DLTs
+            // These provide global lighting, but must turn of or they interfere with the main menu lighting.
 
             using var dlHostP = MEPackageHandler.OpenMEPackage(@"D:\Origin Games\Mass Effect 3\BIOGame\CookedPCConsole\BioA_Cat002.pcc");
+            var nlcBin = ObjectBinary.From<StaticLightCollectionActor>(newLightCollection);
+            var directionalLightComponents = nlcBin.Components.Where(x => entryMenuPackage.GetUExport(x).ClassName == "DirectionalLightComponent").Select(x => entryMenuPackage.GetUExport(x)).ToList();
 
             var newDLTExport1 = portEntry(dlHostP.GetUExport(66), targetLink, EntryImporter.PortingOption.AddSingularAsChild) as ExportEntry;
-            var newDLTExport2 = portEntry(dlHostP.GetUExport(66), targetLink, EntryImporter.PortingOption.AddSingularAsChild) as ExportEntry;
 
-            var dlComponentsToPort = lcActor.Components.Where(x => x.GetEntry(biopChar).ClassName == "DirectionalLightComponent").ToList();
-            var DLComponent1 = portEntry(biopChar.GetUExport(dlComponentsToPort[0]), newDLTExport1);
-            var DLComponent2 = portEntry(biopChar.GetUExport(dlComponentsToPort[1]), newDLTExport1);
-
-            newDLTExport1.WriteProperty(new ObjectProperty(DLComponent1.UIndex, "LightComponent"));
-            newDLTExport2.WriteProperty(new ObjectProperty(DLComponent2.UIndex, "LightComponent"));
-
+            ReindexAllSameNamedObjects(newDLTExport1);
+            newDLTExport1.WriteProperty(new ObjectProperty(directionalLightComponents[0].UIndex, "LightComponent"));
+            newDLTExport1.RemoveProperty("DrawScale");
             // Move the stuff and rotate it
-            var transform = lcActor.LocalToWorldTransforms[(lcActor.Components.IndexOf(dlComponentsToPort[0]))].UnrealDecompose();
-            SharedPathfinding.SetLocation(newDLTExport1, transform.translation.X, transform.translation.Y, transform.translation.Z);
-            newDLTExport1.WriteProperty(BuildRotationStruct(transform.rotation.Pitch, transform.rotation.Yaw, transform.rotation.Roll));
+            var orignalTransform = lcActor.LocalToWorldTransforms[lcActor.Components.IndexOf(new UIndex(5839))].UnrealDecompose();
+            SharedPathfinding.SetLocation(newDLTExport1, orignalTransform.translation.X, orignalTransform.translation.Y, orignalTransform.translation.Z);
+            newDLTExport1.WriteProperty(BuildRotationStruct(orignalTransform.rotation.Pitch, orignalTransform.rotation.Yaw, orignalTransform.rotation.Roll));
 
-            transform = lcActor.LocalToWorldTransforms[(lcActor.Components.IndexOf(dlComponentsToPort[1]))].UnrealDecompose();
-            SharedPathfinding.SetLocation(newDLTExport2, transform.translation.X, transform.translation.Y, transform.translation.Z);
-            newDLTExport2.WriteProperty(BuildRotationStruct(transform.rotation.Pitch, transform.rotation.Yaw, transform.rotation.Roll));
+            //Update links of the directional light components so they sit under the new DLT
+            directionalLightComponents[0].idxLink = newDLTExport1.UIndex;
+
+            PruneUindexesFromSCA(nlcBin, new[] { directionalLightComponents[0].UIndex }.ToList(), false);
 
             // Correct the lighting values!
             //var newLightCollectionBin = ObjectBinary.From<StaticLightCollectionActor>(newLightCollection);
@@ -187,10 +189,11 @@ namespace ME3Explorer.PackageEditor.Experiments
 
             StructProperty BuildRotationStruct(int rotPitch, int rotYaw, int rotRoll)
             {
-                return new StructProperty("Rotator", true,
-                    new IntProperty(rotPitch, "Pitch"),
-                    new IntProperty(rotYaw, "Yaw"),
-                    new IntProperty(rotRoll, "Roll"));
+                PropertyCollection nsProps = new PropertyCollection();
+                nsProps.Add(new IntProperty(rotPitch, "Pitch"));
+                nsProps.Add(new IntProperty(rotYaw, "Yaw"));
+                nsProps.Add(new IntProperty(rotRoll, "Roll"));
+                return new StructProperty("Rotator", nsProps, "Rotation", true);
             }
 
             IEntry portEntry(IEntry sourceEntry, IEntry targetLinkEntry, EntryImporter.PortingOption portingOption = EntryImporter.PortingOption.CloneAllDependencies)
@@ -201,7 +204,7 @@ namespace ME3Explorer.PackageEditor.Experiments
                 //Import!
                 var relinkResults = EntryImporter.ImportAndRelinkEntries(portingOption, sourceEntry, entryMenuPackage,
                     targetLinkEntry, true, out IEntry newEntry, crossPCCObjectMap);
-                if (relinkResults.Any())
+                if (relinkResults.Any() && portingOption == EntryImporter.PortingOption.CloneAllDependencies)
                 {
                     Debugger.Break();
                 }
@@ -242,7 +245,7 @@ namespace ME3Explorer.PackageEditor.Experiments
             }
 
 
-            void PruneUindexesFromSCA(StaticCollectionActor sca, List<int> uindicesToRemove)
+            void PruneUindexesFromSCA(StaticCollectionActor sca, List<int> uindicesToRemove, bool trash = true)
             {
                 for (int i = sca.Components.Count - 1; i >= 0; i--)
                 {
@@ -258,13 +261,17 @@ namespace ME3Explorer.PackageEditor.Experiments
                 //var componentsToRemove = components.Where(x => uindicesToRemove.Contains(x.Value)).ToList();
 
                 // Trash the useless children
-                foreach (var c in components)
+                if (trash)
                 {
-                    if (uindicesToRemove.Contains(c.Value))
+                    foreach (var c in components)
                     {
-                        EntryPruner.TrashEntryAndDescendants(c.ResolveToEntry(sca.Export.FileRef));
+                        if (uindicesToRemove.Contains(c.Value))
+                        {
+                            EntryPruner.TrashEntryAndDescendants(c.ResolveToEntry(sca.Export.FileRef));
+                        }
                     }
                 }
+
                 // Remove from properties
                 components.Remove(x => uindicesToRemove.Contains(x.Value)); //remove from properties
                 sca.Export.WriteProperties(scmaProps);
@@ -301,7 +308,6 @@ namespace ME3Explorer.PackageEditor.Experiments
 
             if (panModeEnabled)
             {
-                var animationLength = 80; //how long a pan and back takes
                 panUpITF.RemoveProperty("FloatTrack"); //remove pan up FOV change
 
                 // init to save code
@@ -447,6 +453,39 @@ namespace ME3Explorer.PackageEditor.Experiments
             var newProp = new EnumProperty("IMF_RelativeToInitial", "EInterpTrackMoveFrame", MEGame.ME3, "MoveFrame");
             properties.AddOrReplaceProp(newProp);
             cameraInterpTrackMove1.WriteProperties(properties);
+
+            // Add a black screen for 1s to let the mips load
+            // otherwise it looks like bass
+            var mainSeq = entryMenuPackage.GetUExport(704);
+
+            // initial black screen so mips can fade in
+            var initialBlackScreenSeqObj = SequenceObjectCreator.CreateSequenceObject(entryMenuPackage, "BioSeqAct_BlackScreen", MEGame.ME3);
+            KismetHelper.AddObjectToSequence(initialBlackScreenSeqObj, mainSeq);
+
+            var delaySeqObj = SequenceObjectCreator.CreateSequenceObject(entryMenuPackage, "SeqAct_Delay", MEGame.ME3);
+            delaySeqObj.WriteProperty(new FloatProperty(mipFadeInDelay, "Duration"));
+            KismetHelper.AddObjectToSequence(delaySeqObj, mainSeq);
+
+            var fadeInBlackScreenSeqObj = SequenceObjectCreator.CreateSequenceObject(entryMenuPackage, "BioSeqAct_BlackScreen", MEGame.ME3);
+            fadeInBlackScreenSeqObj.WriteProperty(new EnumProperty("BlackScreenAction_FadeFromBlack", "BlackScreenActionSet", MEGame.ME3, "m_eBlackScreenAction"));
+            KismetHelper.AddObjectToSequence(fadeInBlackScreenSeqObj, mainSeq);
+
+            var startScreenHold = entryMenuPackage.GetUExport(669);
+            KismetHelper.CreateOutputLink(initialBlackScreenSeqObj, "Finished", delaySeqObj);
+            KismetHelper.CreateOutputLink(delaySeqObj, "Finished", startScreenHold);
+            KismetHelper.CreateOutputLink(delaySeqObj, "Finished", fadeInBlackScreenSeqObj);
+            
+            // repoint the link from shouldshowsplash to our black screen instead of the interp
+            var ssss = entryMenuPackage.GetUExport(100);
+            var ssssprops = ssss.GetProperties();
+            ssssprops.GetProp<ArrayProperty<StructProperty>>("OutputLinks")[0]
+                .GetProp<ArrayProperty<StructProperty>>("Links")[0].GetProp<ObjectProperty>("LinkedOp").Value = initialBlackScreenSeqObj.UIndex;
+            ssss.WriteProperties(ssssprops);
+
+
+            //KismetHelper.CreateOutputLink(initialBlackScreenSeqObj, "Out", setStreamingState);
+            //KismetHelper.CreateVariableLink(sendMessageToME3Exp, "MessageName", stringVar);
+
 
             entryMenuPackage.Save(@"D:\Origin Games\Mass Effect 3\BioGame\CookedPCConsole\EntryMenu.pcc");
         }
