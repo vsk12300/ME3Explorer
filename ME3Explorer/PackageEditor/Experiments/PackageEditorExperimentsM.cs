@@ -64,20 +64,13 @@ namespace ME3Explorer.PackageEditor.Experiments
             var lightCollectionExp = biopChar.GetUExport(28403);
             var lcActor = ObjectBinary.From<StaticLightCollectionActor>(lightCollectionExp);
 
-            // Prune some lights
+            // Prune to the basic lights
             var lcExpsToPrune = lcActor.Components.Select(x => x.value).ToList();
             lcExpsToPrune.Remove(27009); //Only these three seem to actually matter after testing. The rest don't do anything or screw up the main menu colors
             lcExpsToPrune.Remove(27018);
             lcExpsToPrune.Remove(27029);
 
-            //// experimental ones to keep
-            //lcExpsToPrune.Remove(5839);
-            //lcExpsToPrune.Remove(5840);
-
-            // none
-
             PruneUindexesFromSCA(lcActor, lcExpsToPrune.ToList());
-
 
             itemsToPort.Add(me3UncPlanet); //UNC53Planet
             itemsToPort.Add(biopChar.GetUExport(6279)); //Corona
@@ -92,26 +85,53 @@ namespace ME3Explorer.PackageEditor.Experiments
                 if (item == lightCollectionExp) newLightCollection = newEntry as ExportEntry;
             }
 
-            // Correct the lighting values!
-            var newLightCollectionBin = ObjectBinary.From<StaticLightCollectionActor>(newLightCollection);
-            foreach (var subComp in newLightCollectionBin.Components)
-            {
-                var subLight = subComp.GetEntry(entryMenuPackage) as ExportEntry;
-                var existingBrightness = subLight.GetProperty<FloatProperty>("Brightness");
-                switch (existingBrightness.Value)
-                {
-                    case 0.2f:
-                        //existingBrightness.Value = 10f;
-                        break;
-                    case 0.03f:
-                        existingBrightness.Value = 0.5f;
-                        break;
-                    case 3:
-                        break;
+            // We also need to port in some directional lights, but they must be toggle-able
+            //These provide global lighting and will take significant work to make them turn off when we fade out.
+            lcExpsToPrune.Remove(5839);
+            lcExpsToPrune.Remove(5840);
 
-                }
-                subLight.WriteProperty(existingBrightness);
-            }
+            using var dlHostP = MEPackageHandler.OpenMEPackage(@"D:\Origin Games\Mass Effect 3\BIOGame\CookedPCConsole\BioA_Cat002.pcc");
+
+            var newDLTExport1 = portEntry(dlHostP.GetUExport(66), targetLink, EntryImporter.PortingOption.AddSingularAsChild) as ExportEntry;
+            var newDLTExport2 = portEntry(dlHostP.GetUExport(66), targetLink, EntryImporter.PortingOption.AddSingularAsChild) as ExportEntry;
+
+            var dlComponentsToPort = lcActor.Components.Where(x => x.GetEntry(biopChar).ClassName == "DirectionalLightComponent").ToList();
+            var DLComponent1 = portEntry(biopChar.GetUExport(dlComponentsToPort[0]), newDLTExport1);
+            var DLComponent2 = portEntry(biopChar.GetUExport(dlComponentsToPort[1]), newDLTExport1);
+
+            newDLTExport1.WriteProperty(new ObjectProperty(DLComponent1.UIndex, "LightComponent"));
+            newDLTExport2.WriteProperty(new ObjectProperty(DLComponent2.UIndex, "LightComponent"));
+
+            // Move the stuff and rotate it
+            var transform = lcActor.LocalToWorldTransforms[(lcActor.Components.IndexOf(dlComponentsToPort[0]))].UnrealDecompose();
+            SharedPathfinding.SetLocation(newDLTExport1, transform.translation.X, transform.translation.Y, transform.translation.Z);
+            newDLTExport1.WriteProperty(BuildRotationStruct(transform.rotation.Pitch, transform.rotation.Yaw, transform.rotation.Roll));
+
+            transform = lcActor.LocalToWorldTransforms[(lcActor.Components.IndexOf(dlComponentsToPort[1]))].UnrealDecompose();
+            SharedPathfinding.SetLocation(newDLTExport2, transform.translation.X, transform.translation.Y, transform.translation.Z);
+            newDLTExport2.WriteProperty(BuildRotationStruct(transform.rotation.Pitch, transform.rotation.Yaw, transform.rotation.Roll));
+
+            // Correct the lighting values!
+            //var newLightCollectionBin = ObjectBinary.From<StaticLightCollectionActor>(newLightCollection);
+            //foreach (var subComp in newLightCollectionBin.Components)
+            //{
+            //    var subLight = subComp.GetEntry(entryMenuPackage) as ExportEntry;
+            //    var existingBrightness = subLight.GetProperty<FloatProperty>("Brightness");
+            //    switch (subLight.ObjectName.Instanced)
+            //    {
+            //        case "PointLight_LC_2": //This light seems to do nothing. Default brightness: 3
+            //            //existingBrightness.Value = 0f; 
+            //            break;
+            //        case "PointLight_LC_3": //Lighted side of the planet. Default brightness: 0.03
+            //            existingBrightness.Value = 0.09f;
+            //            break;
+            //        case "PointLight_LC_4": //Overall planet lighting. Default brightness: 0.2
+            //            existingBrightness.Value = 0.4f;
+            //            break;
+
+            //    }
+            //    subLight.WriteProperty(existingBrightness);
+            //}
 
 
 
@@ -164,13 +184,22 @@ namespace ME3Explorer.PackageEditor.Experiments
 
 
             #region internalMethods
-            IEntry portEntry(IEntry sourceEntry, IEntry targetLinkEntry)
+
+            StructProperty BuildRotationStruct(int rotPitch, int rotYaw, int rotRoll)
+            {
+                return new StructProperty("Rotator", true,
+                    new IntProperty(rotPitch, "Pitch"),
+                    new IntProperty(rotYaw, "Yaw"),
+                    new IntProperty(rotRoll, "Roll"));
+            }
+
+            IEntry portEntry(IEntry sourceEntry, IEntry targetLinkEntry, EntryImporter.PortingOption portingOption = EntryImporter.PortingOption.CloneAllDependencies)
             {
                 Dictionary<IEntry, IEntry> crossPCCObjectMap = new Dictionary<IEntry, IEntry>();
 
                 int numExports = entryMenuPackage.ExportCount;
                 //Import!
-                var relinkResults = EntryImporter.ImportAndRelinkEntries(EntryImporter.PortingOption.CloneAllDependencies, sourceEntry, entryMenuPackage,
+                var relinkResults = EntryImporter.ImportAndRelinkEntries(portingOption, sourceEntry, entryMenuPackage,
                     targetLinkEntry, true, out IEntry newEntry, crossPCCObjectMap);
                 if (relinkResults.Any())
                 {
