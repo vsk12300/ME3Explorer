@@ -1276,11 +1276,7 @@ namespace ME3ExplorerCore.Unreal
         public override PropertyType PropType => PropertyType.ByteProperty;
 
         public NameReference EnumType { get; }
-        public NameReference Value
-        {
-            get;
-            set;
-        }
+        public NameReference Value { get; set; }
         public List<NameReference> EnumValues { get; }
 
         public EnumProperty(EndianReader stream, IMEPackage pcc, NameReference enumType, NameReference? name = null) : base(name)
@@ -1476,7 +1472,7 @@ namespace ME3ExplorerCore.Unreal
             }
         }
 
-#region IEnumerable<T>
+        #region IEnumerable<T>
         public new IEnumerator<T> GetEnumerator()
         {
             return Values.GetEnumerator();
@@ -1486,9 +1482,9 @@ namespace ME3ExplorerCore.Unreal
         {
             return Values.GetEnumerator();
         }
-#endregion
+        #endregion
 
-#region IList<T>
+        #region IList<T>
         public override int Count => Values.Count;
         public new bool IsReadOnly => ((ICollection<T>)Values).IsReadOnly;
 
@@ -1542,7 +1538,7 @@ namespace ME3ExplorerCore.Unreal
         {
             Values.InsertRange(index, collection);
         }
-#endregion
+        #endregion
 
         public override void SwapElements(int i, int j)
         {
