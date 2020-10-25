@@ -594,11 +594,11 @@ namespace ME3ExplorerCore.Unreal
                                 try
                                 {
 #endif
-                                props.Add(new StructProperty(arrayStructType, structProps)
-                                {
-                                    StartOffset = structOffset,
-                                    ValueOffset = structProps[0].StartOffset
-                                });
+                                    props.Add(new StructProperty(arrayStructType, structProps)
+                                    {
+                                        StartOffset = structOffset,
+                                        ValueOffset = structProps[0].StartOffset
+                                    });
 #if DEBUG
                                 }
                                 catch (Exception e)
@@ -1276,7 +1276,11 @@ namespace ME3ExplorerCore.Unreal
         public override PropertyType PropType => PropertyType.ByteProperty;
 
         public NameReference EnumType { get; }
-        public NameReference Value { get; set; }
+        public NameReference Value
+        {
+            get;
+            set;
+        }
         public List<NameReference> EnumValues { get; }
 
         public EnumProperty(EndianReader stream, IMEPackage pcc, NameReference enumType, NameReference? name = null) : base(name)
@@ -1295,10 +1299,15 @@ namespace ME3ExplorerCore.Unreal
             {
                 var eNameIdx = stream.ReadInt32();
                 var eName = pcc.GetNameEntry(eNameIdx);
+#if AZURE || DEBUG
+                if (eName == "")
+                {
+                    throw new Exception($"Enum being initialized with invalid name reference idx: {eNameIdx}");
+                }
+#endif
                 var eNameNumber = stream.ReadInt32();
                 Value = new NameReference(eName, eNameNumber);
             }
-
         }
 
         public EnumProperty(NameReference value, NameReference enumType, MEGame meGame, NameReference? name = null) : base(name)
@@ -1467,7 +1476,7 @@ namespace ME3ExplorerCore.Unreal
             }
         }
 
-        #region IEnumerable<T>
+#region IEnumerable<T>
         public new IEnumerator<T> GetEnumerator()
         {
             return Values.GetEnumerator();
@@ -1477,9 +1486,9 @@ namespace ME3ExplorerCore.Unreal
         {
             return Values.GetEnumerator();
         }
-        #endregion
+#endregion
 
-        #region IList<T>
+#region IList<T>
         public override int Count => Values.Count;
         public new bool IsReadOnly => ((ICollection<T>)Values).IsReadOnly;
 
@@ -1533,7 +1542,7 @@ namespace ME3ExplorerCore.Unreal
         {
             Values.InsertRange(index, collection);
         }
-        #endregion
+#endregion
 
         public override void SwapElements(int i, int j)
         {
