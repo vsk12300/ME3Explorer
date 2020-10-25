@@ -34,11 +34,17 @@ namespace ME3Explorer.PackageEditor.Experiments
     /// </summary>
     class PackageEditorExperimentsM
     {
-        public static void PortME1EntryMenuToME3ViaBioPChar(IMEPackage entryMenuPackage)
+        public static void PortME1EntryMenuToME3ViaBioPChar()
         {
+            using var entryMenuPackage = MEPackageHandler.OpenMEPackage(@"Z:\ME3-Backup\BIOGame\CookedPCConsole\EntryMenu.pcc");
+
             // Options
             bool panModeEnabled = true;
-            bool randomTinting = true;
+            bool randomTinting = false;
+
+            // Add names that must be indexed at specific values
+            var foundName = entryMenuPackage.FindNameOrAdd("CIM_CurveAutoClamped"); //1300
+
 
             // Open packages
             using var biopChar = MEPackageHandler.OpenMEPackage(@"D:\Origin Games\Mass Effect 3\BIOGame\CookedPCConsole\BioP_Char.pcc");
@@ -60,11 +66,14 @@ namespace ME3Explorer.PackageEditor.Experiments
 
             // Prune some lights
             var lcExpsToPrune = lcActor.Components.Select(x => x.value).ToList();
-            lcExpsToPrune.Remove(27009);
+            lcExpsToPrune.Remove(27009); //Only these three seem to actually matter after testing. The rest don't do anything or screw up the main menu colors
             lcExpsToPrune.Remove(27018);
             lcExpsToPrune.Remove(27029);
 
-            // experimental ones to keep
+            //// experimental ones to keep
+            //lcExpsToPrune.Remove(5839);
+            //lcExpsToPrune.Remove(5840);
+
             // none
 
             PruneUindexesFromSCA(lcActor, lcExpsToPrune.ToList());
@@ -75,11 +84,36 @@ namespace ME3Explorer.PackageEditor.Experiments
             itemsToPort.Add(biopChar.GetUExport(6280)); //GXMPlanet
             itemsToPort.Add(lightCollectionExp); //Lights. Might need to cut down on these as it affects main menu too
 
+            ExportEntry newLightCollection = null;
             foreach (var item in itemsToPort)
             {
                 var newEntry = portEntry(item, targetLink);
                 ReindexAllSameNamedObjects(newEntry); // this is experiment, who cares how fast it is
+                if (item == lightCollectionExp) newLightCollection = newEntry as ExportEntry;
             }
+
+            // Correct the lighting values!
+            var newLightCollectionBin = ObjectBinary.From<StaticLightCollectionActor>(newLightCollection);
+            foreach (var subComp in newLightCollectionBin.Components)
+            {
+                var subLight = subComp.GetEntry(entryMenuPackage) as ExportEntry;
+                var existingBrightness = subLight.GetProperty<FloatProperty>("Brightness");
+                switch (existingBrightness.Value)
+                {
+                    case 0.2f:
+                        //existingBrightness.Value = 10f;
+                        break;
+                    case 0.03f:
+                        existingBrightness.Value = 0.5f;
+                        break;
+                    case 3:
+                        break;
+
+                }
+                subLight.WriteProperty(existingBrightness);
+            }
+
+
 
             // We need to add a star field like ME1/ME2 has
 
@@ -238,21 +272,23 @@ namespace ME3Explorer.PackageEditor.Experiments
 
             if (panModeEnabled)
             {
-                var animationLength = 90; //how long a pan and back takes
-                // fov
+                var animationLength = 80; //how long a pan and back takes
+                panUpITF.RemoveProperty("FloatTrack"); //remove pan up FOV change
 
                 // init to save code
+                entryMenuPackage.FindNameOrAdd("CIM_CurveAutoClamped"); //Add name index so binary swap in is valid
+
                 var fovTrack = entryMenuPackage.GetUExport(192);
                 fovTrack.Data = File.ReadAllBytes(@"Z:\Entrymenu-me3\panFovInit.bin");
                 var fovProps = fovTrack.GetProperties();
 
                 // Fix inputs, cause i'm lazy
                 fovProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0]
-                        .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurvedAutoClamped";
+                    .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurveAutoClamped";
                 fovProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1]
-                    .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurvedAutoClamped";
+                    .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurveAutoClamped";
                 fovProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[2]
-                    .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurvedAutoClamped";
+                    .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurveAutoClamped";
 
 
                 //midpoint
@@ -285,16 +321,33 @@ namespace ME3Explorer.PackageEditor.Experiments
                     points = eulerTrack.GetProp<ArrayProperty<StructProperty>>("Points");
 
                     //float startx = random.NextFloat(, -4800);
-                    float startPitch = random.NextFloat(25, 35);
-                    float startYaw = random.NextFloat(-195, -160);
+                    float startPitch = 0;//random.NextFloat(25, 35);
+                    float startYaw = 0;//random.NextFloat(-195, -160);
 
                     //startx = 1.736f;
                     //startPitch = 31.333f;
                     //startYaw = -162.356f;
 
                     float peakx = 1.736f; //Roll. We shouldn't change this. This is the default roll
-                    float peakPitch = ZUp ? random.NextFloat(0, 30) : random.NextFloat(-8, 10); //Pitch
-                    float peakYaw = random.NextFloat(-290, -150);
+                    var panYawInsteadOfPitch = random.Next(2) == 0;
+
+                    float peakPitch = 0, peakYaw = 0;
+                    //if (panYawInsteadOfPitch)
+                    //{
+                    //    // Panning over the top
+                    //    peakYaw = random.NextFloat(-20, -3);
+                    //    peakPitch = random.NextFloat(-2, 3); //Pitch
+                    //}
+                    //else
+                    //{
+                    //    // Panning mostly up/down
+                    //    peakYaw = random.NextFloat(0, 1); //what's this gonna do...
+                    //    peakPitch = random.NextFloat(-12, 1); //Pitch
+                    //}
+                    peakPitch = 0;
+                    peakYaw = -33;
+
+
                     if (points != null)
                     {
                         int i = 0;
@@ -339,18 +392,37 @@ namespace ME3Explorer.PackageEditor.Experiments
                     foreach (var vector in planetMatProps.GetProp<ArrayProperty<StructProperty>>("VectorParameterValues"))
                     {
                         var paramValue = vector.GetProp<StructProperty>("ParameterValue");
-                        RandomizeTint(random, paramValue, true);
+                        RandomizeTint(random, paramValue, true, true);
                     }
                     planetMatInst.WriteProperties(planetMatProps);
                 }
+
+                var coronaMatInst = entryMenuPackage.Exports.FirstOrDefault(x => x.InstancedFullPath == "BIOA_GXM10_T.Instances.GXM_Corona_Splash");
+                if (coronaMatInst != null)
+                {
+                    var coronaMatProps = coronaMatInst.GetProperties();
+                    foreach (var vector in coronaMatProps.GetProp<ArrayProperty<StructProperty>>("VectorParameterValues"))
+                    {
+                        var paramValue = vector.GetProp<StructProperty>("ParameterValue");
+                        RandomizeTint(random, paramValue, false, false);
+                    }
+
+                    coronaMatProps.GetProp<ArrayProperty<StructProperty>>("ScalarParameterValues")[0].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(0.01f, 0.03f);
+
+                    coronaMatInst.WriteProperties(coronaMatProps);
+                }
+
             }
 
             //SharedPathfinding.SetRotation(properties.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"), rotRoll, rotYaw, rotPitch);
-            properties.AddOrReplaceProp(new EnumProperty("IMF_RelativeToInitial", "EInterpTrackMoveFrame", MEGame.ME3, "MoveFrame"));
+            var newProp = new EnumProperty("IMF_RelativeToInitial", "EInterpTrackMoveFrame", MEGame.ME3, "MoveFrame");
+            properties.AddOrReplaceProp(newProp);
             cameraInterpTrackMove1.WriteProperties(properties);
+
+            entryMenuPackage.Save(@"D:\Origin Games\Mass Effect 3\BioGame\CookedPCConsole\EntryMenu.pcc");
         }
 
-        private static void RandomizeTint(Random random, StructProperty tint, bool randomizeAlpha)
+        private static void RandomizeTint(Random random, StructProperty tint, bool randomizeAlpha, bool additive)
         {
             var a = tint.GetProp<FloatProperty>("A");
             var r = tint.GetProp<FloatProperty>("R");
@@ -358,13 +430,18 @@ namespace ME3Explorer.PackageEditor.Experiments
             var b = tint.GetProp<FloatProperty>("B");
 
             float totalTintValue = r + g + b;
-
+            if (additive)
+            {
+                var maybeAdd = (randomizeAlpha ? 4 : 3) - totalTintValue;
+                totalTintValue += random.NextFloat(-maybeAdd, maybeAdd);
+            }
             //Randomizing hte pick order will ensure we get a random more-dominant first color (but only sometimes).
             //e.g. if e went in R G B order red would always have a chance at a higher value than the last picked item
             List<FloatProperty> randomOrderChooser = new List<FloatProperty>();
             randomOrderChooser.Add(r);
             randomOrderChooser.Add(g);
             randomOrderChooser.Add(b);
+            if (randomizeAlpha) randomOrderChooser.Add(a);
             Shuffle(randomOrderChooser, random);
 
             randomOrderChooser[0].Value = random.NextFloat(0, totalTintValue);
@@ -376,7 +453,9 @@ namespace ME3Explorer.PackageEditor.Experiments
             randomOrderChooser[2].Value = totalTintValue;
             if (randomizeAlpha)
             {
-                a.Value = random.NextFloat(0, 1);
+                // whatever is leftover
+                totalTintValue -= randomOrderChooser[1].Value;
+                a.Value = randomOrderChooser[3].Value = totalTintValue;
             }
         }
 

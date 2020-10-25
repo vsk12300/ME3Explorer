@@ -4791,7 +4791,7 @@ namespace ME3Explorer
 
         private void PortME1EntryMenu_Clicked(object sender, RoutedEventArgs e)
         {
-            PackageEditorExperimentsM.PortME1EntryMenuToME3ViaBioPChar(Pcc);
+aaaaaaaaa            PackageEditorExperimentsM.PortME1EntryMenuToME3ViaBioPChar();
         }
     }
 }
