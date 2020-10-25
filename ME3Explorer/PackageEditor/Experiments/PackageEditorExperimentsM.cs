@@ -241,7 +241,7 @@ namespace ME3Explorer.PackageEditor.Experiments
                 sca.Export.WriteProperties(scmaProps);
 
                 // write the binary out now
-                sca.Export.SetBinaryData(sca);
+                sca.Export.WriteBinary(sca);
             }
 
             #endregion
@@ -1626,7 +1626,7 @@ namespace ME3Explorer.PackageEditor.Experiments
                     terrainBin.Heights[i] = (ushort)(r.Next(2000) + 13000);
                 }
 
-                terrain.SetBinaryData(terrainBin);
+                terrain.WriteBinary(terrainBin);
             }
         }
     }
