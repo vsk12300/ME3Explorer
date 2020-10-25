@@ -36,6 +36,10 @@ namespace ME3Explorer.PackageEditor.Experiments
     {
         public static void PortME1EntryMenuToME3ViaBioPChar(IMEPackage entryMenuPackage)
         {
+            // Options
+            bool panModeEnabled = true;
+            bool randomTinting = true;
+
             // Open packages
             using var biopChar = MEPackageHandler.OpenMEPackage(@"D:\Origin Games\Mass Effect 3\BIOGame\CookedPCConsole\BioP_Char.pcc");
             using var me1em = MEPackageHandler.OpenMEPackage(@"D:\Origin Games\Mass Effect\BioGame\CookedPC\Maps\EntryMenu.sfm");
@@ -59,6 +63,10 @@ namespace ME3Explorer.PackageEditor.Experiments
             lcExpsToPrune.Remove(27009);
             lcExpsToPrune.Remove(27018);
             lcExpsToPrune.Remove(27029);
+
+            // experimental ones to keep
+            // none
+
             PruneUindexesFromSCA(lcActor, lcExpsToPrune.ToList());
 
 
@@ -101,7 +109,7 @@ namespace ME3Explorer.PackageEditor.Experiments
             var panUpITF = entryMenuPackage.GetUExport(194); //FOV
             // Just port this from the ME2 file. It'll be much easier
 
-            using var me2em = MEPackageHandler.OpenMEPackage(@"E:\Documents\BioWare\Mass Effect 2\BIOGame\Published\CookedPC\entrymenu.pcc");
+            using var me2em = MEPackageHandler.OpenMEPackage(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"Bioware\Mass Effect 2\BIOGame\Published\CookedPC\entrymenu.pcc"));
             EntryImporter.ImportAndRelinkEntries(EntryImporter.PortingOption.ReplaceSingular, me2em.GetUExport(198), entryMenuPackage, panUpITF, true, out _); // Copy FOV ITF
             EntryImporter.ImportAndRelinkEntries(EntryImporter.PortingOption.ReplaceSingular, me2em.GetUExport(205), entryMenuPackage, panUpITM, true, out _); // Copy movement ITM
             EntryImporter.ImportAndRelinkEntries(EntryImporter.PortingOption.ReplaceSingular, me2em.GetUExport(205), entryMenuPackage, panUpITM, true, out _); // Copy movement ITM
@@ -224,13 +232,42 @@ namespace ME3Explorer.PackageEditor.Experiments
             // Fix interptrackmove1, which is just camera sitting there
             var cameraInterpTrackMove1 = entryMenuPackage.GetUExport(195);
             var properties = cameraInterpTrackMove1.GetProperties();
-            bool panModeEnabled = true;
+
+            // options
+            Random random = new Random();
+
             if (panModeEnabled)
             {
-                var animationLength = 50; //how long a pan and back takes
+                var animationLength = 90; //how long a pan and back takes
+                // fov
+
+                // init to save code
+                var fovTrack = entryMenuPackage.GetUExport(192);
+                fovTrack.Data = File.ReadAllBytes(@"Z:\Entrymenu-me3\panFovInit.bin");
+                var fovProps = fovTrack.GetProperties();
+
+                // Fix inputs, cause i'm lazy
+                fovProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0]
+                        .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurvedAutoClamped";
+                fovProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1]
+                    .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurvedAutoClamped";
+                fovProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[2]
+                    .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurvedAutoClamped";
+
+
+                //midpoint
+                fovProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1]
+                    .GetProp<FloatProperty>("InVal").Value = random.NextFloat(animationLength * 5.0f / 8, animationLength * 7.0f / 8);
+                fovProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1]
+                    .GetProp<FloatProperty>("OutVal").Value = random.NextFloat(35, 70); //FOV at midpoint
+                fovProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[2]
+                    .GetProp<FloatProperty>("InVal").Value = animationLength; //end timing
+                fovTrack.WriteProperties(fovProps);
+
+
+
                 var holdInterp = entryMenuPackage.GetUExport(164);
                 holdInterp.WriteProperty(new FloatProperty(animationLength, "InterpLength"));
-                Random random = new Random();
                 bool ZUp = false;
                 var eulerTrack = properties.GetProp<StructProperty>("EulerTrack");
                 if (eulerTrack != null)
@@ -256,8 +293,8 @@ namespace ME3Explorer.PackageEditor.Experiments
                     //startYaw = -162.356f;
 
                     float peakx = 1.736f; //Roll. We shouldn't change this. This is the default roll
-                    float peakPitch = ZUp ? random.NextFloat(0, 30) : random.NextFloat(-15, 10); //Pitch
-                    float peakYaw = random.NextFloat(-215, -150);
+                    float peakPitch = ZUp ? random.NextFloat(0, 30) : random.NextFloat(-8, 10); //Pitch
+                    float peakYaw = random.NextFloat(-290, -150);
                     if (points != null)
                     {
                         int i = 0;
@@ -292,9 +329,69 @@ namespace ME3Explorer.PackageEditor.Experiments
                 SharedPathfinding.SetLocation(properties.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"), 0, 0, 0);
             }
 
+            if (randomTinting)
+            {
+                var planetMatInst =
+                    entryMenuPackage.Exports.FirstOrDefault(x => x.InstancedFullPath == "BIOA_GXM10_T.GXM_Earth");
+                if (planetMatInst != null)
+                {
+                    var planetMatProps = planetMatInst.GetProperties();
+                    foreach (var vector in planetMatProps.GetProp<ArrayProperty<StructProperty>>("VectorParameterValues"))
+                    {
+                        var paramValue = vector.GetProp<StructProperty>("ParameterValue");
+                        RandomizeTint(random, paramValue, true);
+                    }
+                    planetMatInst.WriteProperties(planetMatProps);
+                }
+            }
+
             //SharedPathfinding.SetRotation(properties.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"), rotRoll, rotYaw, rotPitch);
             properties.AddOrReplaceProp(new EnumProperty("IMF_RelativeToInitial", "EInterpTrackMoveFrame", MEGame.ME3, "MoveFrame"));
             cameraInterpTrackMove1.WriteProperties(properties);
+        }
+
+        private static void RandomizeTint(Random random, StructProperty tint, bool randomizeAlpha)
+        {
+            var a = tint.GetProp<FloatProperty>("A");
+            var r = tint.GetProp<FloatProperty>("R");
+            var g = tint.GetProp<FloatProperty>("G");
+            var b = tint.GetProp<FloatProperty>("B");
+
+            float totalTintValue = r + g + b;
+
+            //Randomizing hte pick order will ensure we get a random more-dominant first color (but only sometimes).
+            //e.g. if e went in R G B order red would always have a chance at a higher value than the last picked item
+            List<FloatProperty> randomOrderChooser = new List<FloatProperty>();
+            randomOrderChooser.Add(r);
+            randomOrderChooser.Add(g);
+            randomOrderChooser.Add(b);
+            Shuffle(randomOrderChooser, random);
+
+            randomOrderChooser[0].Value = random.NextFloat(0, totalTintValue);
+            totalTintValue -= randomOrderChooser[0].Value;
+
+            randomOrderChooser[1].Value = random.NextFloat(0, totalTintValue);
+            totalTintValue -= randomOrderChooser[1].Value;
+
+            randomOrderChooser[2].Value = totalTintValue;
+            if (randomizeAlpha)
+            {
+                a.Value = random.NextFloat(0, 1);
+            }
+        }
+
+        // this was originally an extension method. But i don't want it one in me3ex
+        public static void Shuffle<T>(IList<T> list, Random randomToUse)
+        {
+            int n = list.Count;
+            while (n > 1)
+            {
+                n--;
+                int k = randomToUse.Next(n + 1);
+                T value = list[k];
+                list[k] = list[n];
+                list[n] = value;
+            }
         }
 
         // This is heavily copied from ME1Randomizer
