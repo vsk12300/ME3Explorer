@@ -1693,7 +1693,7 @@ namespace ME3Explorer
                     var TemplateOwnerClassIdx = EndianReader.ToInt32(exp.Data, toci, exp.FileRef.Endian);
                     if (TemplateOwnerClassIdx != 0 && !Pcc.IsEntry(TemplateOwnerClassIdx))
                     {
-                        badReferences.Add(new EntryStringPair(exp, 
+                        badReferences.Add(new EntryStringPair(exp,
                             $"TemplateOwnerClass (Data offset 0x{toci:X}) ({TemplateOwnerClassIdx}) is outside of import/export table, Export #{exp.UIndex} {exp.InstancedFullPath}"));
                     }
                 }
@@ -1747,7 +1747,8 @@ namespace ME3Explorer
                 if (imp.idxLink != 0 && !Pcc.TryGetEntry(imp.idxLink, out _))
                 {
                     badReferences.Add(new EntryStringPair(imp, $"Import #{imp.UIndex} has an invalid link value that is outside of the import/export table {imp.idxLink}"));
-                } else if (imp.idxLink == imp.UIndex)
+                }
+                else if (imp.idxLink == imp.UIndex)
                 {
                     badReferences.Add(new EntryStringPair(imp, $"Import #{imp.UIndex} has a circular self reference for it's link. The game and the toolset may be unable to handle this condition"));
                 }
@@ -4800,7 +4801,7 @@ namespace ME3Explorer
 
         private void PortME1EntryMenu_Clicked(object sender, RoutedEventArgs e)
         {
-aaaaaaaaa            PackageEditorExperimentsM.PortME1EntryMenuToME3ViaBioPChar();
+            PackageEditorExperimentsM.PortME1EntryMenuToME3ViaBioPChar();
         }
     }
 }
