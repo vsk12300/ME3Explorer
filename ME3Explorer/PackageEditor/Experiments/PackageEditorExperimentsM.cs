@@ -485,11 +485,12 @@ namespace ME3Explorer.PackageEditor.Experiments
             using var me2EntryMenuPackage = MEPackageHandler.OpenMEPackage(@"Z:\ME2-Backup\BIOGame\CookedPC\EntryMenu.pcc");
 
             // Options
-            bool panModeEnabled = true;
-            bool randomTinting = true;
+            bool panModeEnabled = true; //If the camera should pan across the top of the planet.
+            bool randomTinting = false; // If the planet's looks should be randomized.
+            bool nightMode = false; //Set to true to port in the additional directionallight.
             var animationLength = 80; //how long a pan and back takes
-            var mipFadeInDelay = 1f; //how long to black screen to let the mips stream in on start. .5s is too little
             var fadeOutTime = 7f; //The time it takes to fade to black after clicking a button. ME1 uses 7s
+            bool suppressAttract = true; //Prevents the movie from playing and interrupting the splash. Always true in pan mode.
 
             // Open packages
             using var biopChar = MEPackageHandler.OpenMEPackage(@"Z:\ME2-Backup\BIOGame\CookedPC\BioP_Char.pcc");
@@ -516,7 +517,10 @@ namespace ME3Explorer.PackageEditor.Experiments
             itemsToPort.Add(gxmCorona);
             itemsToPort.Add(pl_3);
             itemsToPort.Add(pl_4);
-            itemsToPort.Add(directionalLight);
+            if (!nightMode)
+            {
+                itemsToPort.Add(directionalLight);
+            }
 
             ExportEntry newLightCollection = null;
             foreach (var item in itemsToPort)
@@ -798,7 +802,15 @@ namespace ME3Explorer.PackageEditor.Experiments
                     }
                     holdCameraITM.WriteProperties(holdCameraITMProps);
                 }
+            }
+            else
+            {
+                // Copy ME1's FOV changes in for pan up
+                EntryImporter.ImportAndRelinkEntries(EntryImporter.PortingOption.ReplaceSingular, me1em.GetUExport(965), me2EntryMenuPackage, me2EntryMenuPackage.GetUExport(198), false, out _); // Copy movement ITM
+            }
 
+            if (panModeEnabled || suppressAttract)
+            {
                 // Disable attract mode in pan mode as it kind of ruins it.
                 KismetHelper.RemoveAllLinks(me2EntryMenuPackage.GetUExport(1005)); //Kill all events from this
 
@@ -811,11 +823,6 @@ namespace ME3Explorer.PackageEditor.Experiments
                 KismetHelper.AddObjectToSequence(consoleCommandSeqAct, mainSeq);
                 KismetHelper.CreateOutputLink(me2EntryMenuPackage.GetUExport(1010), "Out", consoleCommandSeqAct); //Level startup to this
                 KismetHelper.CreateVariableLink(consoleCommandSeqAct, "Target", me2EntryMenuPackage.GetUExport(1059)); // Target to Player
-            }
-            else
-            {
-                // Copy ME1's FOV changes in for pan up
-                EntryImporter.ImportAndRelinkEntries(EntryImporter.PortingOption.ReplaceSingular, me1em.GetUExport(965), me2EntryMenuPackage, me2EntryMenuPackage.GetUExport(198), false, out _); // Copy movement ITM
             }
             
             if (randomTinting)
@@ -865,8 +872,8 @@ namespace ME3Explorer.PackageEditor.Experiments
                     scalars[2].GetProp<FloatProperty>("ParameterValue").Value = 0; //Atmosphere Min (how gas-gianty it looks)
                 }
 
-                scalars[3].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(.5f, 1.5f); //Atmosphere Tiling U
-                scalars[4].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(.5f, 1.5f); //Atmosphere Tiling V
+                scalars[3].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(.7f, 1.3f); //Atmosphere Tiling U
+                scalars[4].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(.7f, 1.3f); //Atmosphere Tiling V
                 scalars[5].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(.5f, 4f); //Atmosphere Speed
                 scalars[6].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(0.5f, 12f); //Atmosphere Fall off...? seems like corona intensity
 
