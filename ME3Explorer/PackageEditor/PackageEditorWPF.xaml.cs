@@ -200,7 +200,7 @@ namespace ME3Explorer
         }
 
         #region Commands
-
+        public ICommand BuildSplashExperimentCommand { get; set; }
         public ICommand ComparePackagesCommand { get; set; }
         public ICommand CompareToUnmoddedCommand { get; set; }
         public ICommand ExportAllDataCommand { get; set; }
@@ -315,6 +315,7 @@ namespace ME3Explorer
                 () => PackageIsLoaded() && Pcc.Game != MEGame.UDK && Pcc.Exports.Any(exp => exp.ClassName == "Level"));
             ResolveImportCommand = new GenericCommand(OpenImportDefinition, ImportIsSelected);
             FindAllClassInstancesCommand = new GenericCommand(FindAllInstancesofClass, PackageIsLoaded);
+            BuildSplashExperimentCommand = new GenericCommand(() => PortME1EntryMenu_Clicked(null, null));
         }
 
         private void FindAllInstancesofClass()
@@ -4801,7 +4802,7 @@ namespace ME3Explorer
 
         private void PortME1EntryMenu_Clicked(object sender, RoutedEventArgs e)
         {
-            PackageEditorExperimentsM.PortME1EntryMenuToME3ViaBioPChar();
+            PackageEditorExperimentsM.PortME1EntryMenuToME2ViaBioPChar();
         }
     }
 }

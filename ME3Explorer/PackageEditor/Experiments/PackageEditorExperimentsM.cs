@@ -41,12 +41,10 @@ namespace ME3Explorer.PackageEditor.Experiments
 
             // Options
             bool panModeEnabled = true;
-            bool randomTinting = false;
+            bool randomTinting = true;
             var animationLength = 80; //how long a pan and back takes
-            var mipFadeInDelay = 1f; //how long to black screen to let the mips stream in on start
-
-            // Add names that must be indexed at specific values
-            var foundName = entryMenuPackage.FindNameOrAdd("CIM_CurveAutoClamped"); //1300
+            var mipFadeInDelay = 1f; //how long to black screen to let the mips stream in on start. .5s is too little
+            var fireTrails = false; //ME3 ONLY. WIP
 
 
             // Open packages
@@ -69,11 +67,12 @@ namespace ME3Explorer.PackageEditor.Experiments
 
             // Prune to the basic lights
             var lcExpsToPrune = lcActor.Components.Select(x => x.value).ToList();
-            lcExpsToPrune.Remove(27009); //Only these three seem to actually matter after testing. The rest don't do anything or screw up the main menu colors
+            //lcExpsToPrune.Remove(27009); //This light is disabled in me1 and is never enabled. Wonder what it was supposed to be.
+            ////Only these two seem to actually matter after testing. The rest don't do anything
             lcExpsToPrune.Remove(27018);
             lcExpsToPrune.Remove(27029);
 
-            lcExpsToPrune.Remove(5839); // this will be moved around to be part of a toggle-able
+            lcExpsToPrune.Remove(5839); // this is global directional lighting. It messes up main menu lighting too, but idk how to fix it
 
 
             PruneUindexesFromSCA(lcActor, lcExpsToPrune.ToList());
@@ -113,29 +112,12 @@ namespace ME3Explorer.PackageEditor.Experiments
 
             PruneUindexesFromSCA(nlcBin, new[] { directionalLightComponents[0].UIndex }.ToList(), false);
 
-            // Correct the lighting values!
-            //var newLightCollectionBin = ObjectBinary.From<StaticLightCollectionActor>(newLightCollection);
-            //foreach (var subComp in newLightCollectionBin.Components)
-            //{
-            //    var subLight = subComp.GetEntry(entryMenuPackage) as ExportEntry;
-            //    var existingBrightness = subLight.GetProperty<FloatProperty>("Brightness");
-            //    switch (subLight.ObjectName.Instanced)
-            //    {
-            //        case "PointLight_LC_2": //This light seems to do nothing. Default brightness: 3
-            //            //existingBrightness.Value = 0f; 
-            //            break;
-            //        case "PointLight_LC_3": //Lighted side of the planet. Default brightness: 0.03
-            //            existingBrightness.Value = 0.09f;
-            //            break;
-            //        case "PointLight_LC_4": //Overall planet lighting. Default brightness: 0.2
-            //            existingBrightness.Value = 0.4f;
-            //            break;
+            // Install higher resolution textures for the planet
+            // cause the default ones are pretty terrible quality
 
-            //    }
-            //    subLight.WriteProperty(existingBrightness);
-            //}
-
-
+            entryMenuPackage.Exports.First(x => x.ObjectName == "GXM_Atmosphere01").Data = File.ReadAllBytes(@"Z:\EntryMenu-ME3\GXM_Atmosphere01.bin");
+            entryMenuPackage.Exports.First(x => x.ObjectName == "GXM_DiffuseMask01").Data = File.ReadAllBytes(@"Z:\EntryMenu-ME3\GXM_DiffuseMask01.bin");
+            entryMenuPackage.Exports.First(x => x.ObjectName == "GXM_Atmosphere03").Data = File.ReadAllBytes(@"Z:\EntryMenu-ME3\GXM_Atmosphere03.bin");
 
             // We need to add a star field like ME1/ME2 has
 
@@ -176,7 +158,7 @@ namespace ME3Explorer.PackageEditor.Experiments
             // Fix the fade timing
             var fadeITF = entryMenuPackage.GetUExport(190);
             var fadeProps = fadeITF.GetProperties();
-            fadeProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1].GetProp<FloatProperty>("InVal").Value = fadeOutTime / 2; //when fade starts
+            fadeProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1].GetProp<FloatProperty>("InVal").Value = fadeOutTime / 2.0f; //when fade starts
             fadeProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[2].GetProp<FloatProperty>("InVal").Value = fadeOutTime; //end fade time
 
             fadeITF.WriteProperties(fadeProps);
@@ -419,36 +401,42 @@ namespace ME3Explorer.PackageEditor.Experiments
 
             if (randomTinting)
             {
+                // Pretty much everything here is from MER
                 var planetMatInst =
                     entryMenuPackage.Exports.FirstOrDefault(x => x.InstancedFullPath == "BIOA_GXM10_T.GXM_Earth");
+
                 if (planetMatInst != null)
                 {
-                    var planetMatProps = planetMatInst.GetProperties();
-                    foreach (var vector in planetMatProps.GetProp<ArrayProperty<StructProperty>>("VectorParameterValues"))
-                    {
-                        var paramValue = vector.GetProp<StructProperty>("ParameterValue");
-                        RandomizeTint(random, paramValue, true, true);
-                    }
-                    planetMatInst.WriteProperties(planetMatProps);
+                    RandomizePlanetMaterialInstanceConstant(planetMatInst, random);
                 }
 
-                var coronaMatInst = entryMenuPackage.Exports.FirstOrDefault(x => x.InstancedFullPath == "BIOA_GXM10_T.Instances.GXM_Corona_Splash");
-                if (coronaMatInst != null)
+                var coronaMaterial = entryMenuPackage.Exports.FirstOrDefault(x => x.InstancedFullPath == "BIOA_GXM10_T.Instances.GXM_Corona_Splash");
+                if (coronaMaterial != null)
                 {
-                    var coronaMatProps = coronaMatInst.GetProperties();
-                    foreach (var vector in coronaMatProps.GetProp<ArrayProperty<StructProperty>>("VectorParameterValues"))
+                    var props = coronaMaterial.GetProperties();
                     {
-                        var paramValue = vector.GetProp<StructProperty>("ParameterValue");
-                        RandomizeTint(random, paramValue, false, false);
+                        var scalars = props.GetProp<ArrayProperty<StructProperty>>("ScalarParameterValues");
+                        var vectors = props.GetProp<ArrayProperty<StructProperty>>("VectorParameterValues");
+                        scalars[0].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(0.01f, 0.05f); //Bloom
+                        scalars[1].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(1, 10); //Opacity
+                        RandomizeTint(random, vectors[0].GetProp<StructProperty>("ParameterValue"), false, false);
                     }
-
-                    coronaMatProps.GetProp<ArrayProperty<StructProperty>>("ScalarParameterValues")[0].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(0.01f, 0.03f);
-
-                    coronaMatInst.WriteProperties(coronaMatProps);
+                    coronaMaterial.WriteProperties(props);
                 }
-
             }
 
+            if (fireTrails)
+            {
+                float x = -5091;
+                float y = 13572;
+                float z = -38000;
+                var emitters = entryMenuPackage.Exports.Where(x => x.ClassName == "Emitter").ToList();
+                foreach (var emitter in emitters)
+                {
+                    // We're going to change their position so it lines up with a perpendicular plane to the 
+                    SharedPathfinding.SetLocation(emitter, random.NextFloat(x - 500, x + 500), y, random.NextFloat(z, z + 4000));
+                }
+            }
             //SharedPathfinding.SetRotation(properties.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal"), rotRoll, rotYaw, rotPitch);
             var newProp = new EnumProperty("IMF_RelativeToInitial", "EInterpTrackMoveFrame", MEGame.ME3, "MoveFrame");
             properties.AddOrReplaceProp(newProp);
@@ -474,7 +462,7 @@ namespace ME3Explorer.PackageEditor.Experiments
             KismetHelper.CreateOutputLink(initialBlackScreenSeqObj, "Finished", delaySeqObj);
             KismetHelper.CreateOutputLink(delaySeqObj, "Finished", startScreenHold);
             KismetHelper.CreateOutputLink(delaySeqObj, "Finished", fadeInBlackScreenSeqObj);
-            
+
             // repoint the link from shouldshowsplash to our black screen instead of the interp
             var ssss = entryMenuPackage.GetUExport(100);
             var ssssprops = ssss.GetProperties();
@@ -488,8 +476,411 @@ namespace ME3Explorer.PackageEditor.Experiments
 
 
             entryMenuPackage.Save(@"D:\Origin Games\Mass Effect 3\BioGame\CookedPCConsole\EntryMenu.pcc");
+
+            Process.Start(@"D:\Origin Games\Mass Effect 3\Binaries\Win32\MassEffect3.exe");
         }
 
+        public static void PortME1EntryMenuToME2ViaBioPChar()
+        {
+            using var me2EntryMenuPackage = MEPackageHandler.OpenMEPackage(@"Z:\ME2-Backup\BIOGame\CookedPC\EntryMenu.pcc");
+
+            // Options
+            bool panModeEnabled = true;
+            bool randomTinting = true;
+            var animationLength = 80; //how long a pan and back takes
+            var mipFadeInDelay = 1f; //how long to black screen to let the mips stream in on start. .5s is too little
+            var fadeOutTime = 7f; //The time it takes to fade to black after clicking a button. ME1 uses 7s
+
+            // Open packages
+            using var biopChar = MEPackageHandler.OpenMEPackage(@"Z:\ME2-Backup\BIOGame\CookedPC\BioP_Char.pcc");
+            using var me1em = MEPackageHandler.OpenMEPackage(@"D:\Origin Games\Mass Effect\BioGame\CookedPC\Maps\EntryMenu.sfm");
+
+            // Vars
+            var levelExport = me2EntryMenuPackage.GetUExport(217); //PersistentLevel
+
+            // Items that need ported in
+            List<ExportEntry> itemsToPort = new List<ExportEntry>();
+
+            //Planetary stuff 
+            var me2UncPlanetSM = biopChar.GetUExport(19089);
+            var unc53planetInterp = biopChar.GetUExport(4539);
+            var gxmPlanet = biopChar.GetUExport(4543);
+            var gxmCorona = biopChar.GetUExport(4542);
+            var pl_4 = biopChar.GetUExport(18324);
+            var pl_3 = biopChar.GetUExport(18313);
+            var directionalLight = biopChar.GetUExport(3991);
+
+            itemsToPort.Add(me2UncPlanetSM);
+            itemsToPort.Add(unc53planetInterp);
+            itemsToPort.Add(gxmPlanet);
+            itemsToPort.Add(gxmCorona);
+            itemsToPort.Add(pl_3);
+            itemsToPort.Add(pl_4);
+            itemsToPort.Add(directionalLight);
+
+            ExportEntry newLightCollection = null;
+            foreach (var item in itemsToPort)
+            {
+                var newEntry = portEntry(item, levelExport);
+                ReindexAllSameNamedObjects(newEntry); // this is experiment, who cares how fast it is
+            }
+
+            // Trash the... trash
+            var levelBin = ObjectBinary.From<Level>(levelExport);
+            foreach (var v in levelBin.Actors)
+            {
+                var actor = v.GetEntry(me2EntryMenuPackage) as ExportEntry;
+                if (actor?.ClassName == "StaticMeshActor")
+                {
+                    // Check if it's a debris mesh
+                    var smc = actor.GetProperty<ObjectProperty>("StaticMeshComponent");
+                    if (smc != null)
+                    {
+                        var staticMesh = (smc.ResolveToEntry(me2EntryMenuPackage) as ExportEntry)?.GetProperty<ObjectProperty>("StaticMesh")?.ResolveToEntry(me2EntryMenuPackage) as ExportEntry;
+                        if (staticMesh != null)
+                        {
+                            var delete = false;
+                            delete |= staticMesh.ObjectName.Name.Contains("Debris");
+                            delete |= staticMesh.ObjectName.Name.Contains("Examination"); //tables n' beds
+                            if (delete)
+                            {
+                                me2EntryMenuPackage.RemoveFromLevelActors(actor);
+                                EntryPruner.TrashEntryAndDescendants(actor);
+                            }
+                        }
+                    }
+                }
+
+                if (actor?.ClassName == "PostProcessVolume")
+                {
+                    me2EntryMenuPackage.RemoveFromLevelActors(actor);
+                    EntryPruner.TrashEntryAndDescendants(actor);
+                }
+            }
+
+
+            // Install higher resolution textures for the planet
+            // cause the default ones are pretty terrible quality
+
+            me2EntryMenuPackage.Exports.First(x => x.ObjectName == "GXM_Atmosphere01").Data = File.ReadAllBytes(@"Z:\EntryMenu-ME2\GXM_Atmosphere01.bin");
+            me2EntryMenuPackage.Exports.First(x => x.ObjectName == "GXM_DiffuseMask01").Data = File.ReadAllBytes(@"Z:\EntryMenu-ME2\GXM_DiffuseMask01.bin");
+            me2EntryMenuPackage.Exports.First(x => x.ObjectName == "GXM_Atmosphere03").Data = File.ReadAllBytes(@"Z:\EntryMenu-ME2\GXM_Atmosphere03.bin");
+
+
+            // Fix the second stage interpolation where the camera moves up
+
+            // >> Fix the FOV. Just port in the ME1 data.
+            // todo: This should only be applied in non-panning mode
+
+            // >> Set the InterpLength
+            me2EntryMenuPackage.GetUExport(169).WriteProperty(new FloatProperty(fadeOutTime, "InterpLength"));
+
+            var panUpITM = me2EntryMenuPackage.GetUExport(205); //InterpTrackMove for camera
+            var panUpProps = panUpITM.GetProperties();
+            // It's already set to initial moveframe. Thanks BioWare!
+            // >>>> Disable movement of camera.
+            panUpProps.GetProp<StructProperty>("PosTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1].GetProp<StructProperty>("OutVal").GetProp<FloatProperty>("X").Value = 0f;
+            panUpProps.GetProp<StructProperty>("PosTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1].GetProp<StructProperty>("OutVal").GetProp<FloatProperty>("Y").Value = 0f;
+            panUpProps.GetProp<StructProperty>("PosTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1].GetProp<StructProperty>("OutVal").GetProp<FloatProperty>("Z").Value = 0f;
+
+            // Rotation. Calculated delta's (ME1 is not relative) are Pitch +16.34765, Yaw -11.25. Roll does not change
+            panUpProps.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1].GetProp<FloatProperty>("InVal").Value = fadeOutTime;
+            panUpProps.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1].GetProp<StructProperty>("OutVal").GetProp<FloatProperty>("Y").Value = 16.34765f; //Pitch
+            panUpProps.GetProp<StructProperty>("EulerTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1].GetProp<StructProperty>("OutVal").GetProp<FloatProperty>("Z").Value = -11.25f; //Yaw
+            panUpProps.GetProp<StructProperty>("LookupTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1].GetProp<FloatProperty>("Time").Value = fadeOutTime;
+            panUpITM.WriteProperties(panUpProps);
+
+            // Fix the fade out timing
+            var fadeITF = me2EntryMenuPackage.GetUExport(193);
+            var fadeProps = fadeITF.GetProperties();
+            // ** we use a -1 cause ME2 has this immediate jump cut which looks kinda stupid without just a little black screen. Plus it makes the pan continue into darkness
+            fadeProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1].GetProp<FloatProperty>("InVal").Value = (fadeOutTime - 1) / 2.0f; //when fade starts
+            fadeProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[2].GetProp<FloatProperty>("InVal").Value = fadeOutTime - 1; //end fade time
+            fadeITF.WriteProperties(fadeProps);
+
+            #region internalMethods
+
+            StructProperty BuildRotationStruct(int rotPitch, int rotYaw, int rotRoll)
+            {
+                PropertyCollection nsProps = new PropertyCollection();
+                nsProps.Add(new IntProperty(rotPitch, "Pitch"));
+                nsProps.Add(new IntProperty(rotYaw, "Yaw"));
+                nsProps.Add(new IntProperty(rotRoll, "Roll"));
+                return new StructProperty("Rotator", nsProps, "Rotation", true);
+            }
+
+            IEntry portEntry(IEntry sourceEntry, IEntry targetLinkEntry, EntryImporter.PortingOption portingOption = EntryImporter.PortingOption.CloneAllDependencies)
+            {
+                Dictionary<IEntry, IEntry> crossPCCObjectMap = new Dictionary<IEntry, IEntry>();
+
+                int numExports = me2EntryMenuPackage.ExportCount;
+                //Import!
+                var relinkResults = EntryImporter.ImportAndRelinkEntries(portingOption, sourceEntry, me2EntryMenuPackage,
+                    targetLinkEntry, true, out IEntry newEntry, crossPCCObjectMap);
+                if (relinkResults.Any() && portingOption == EntryImporter.PortingOption.CloneAllDependencies)
+                {
+                    Debugger.Break();
+                }
+
+                TryAddToPersistentLevel2(me2EntryMenuPackage.Exports.Skip(numExports));
+                return newEntry;
+            }
+
+            bool TryAddToPersistentLevel2(IEnumerable<IEntry> newEntries)
+            {
+                ExportEntry[] actorsToAdd = newEntries.OfType<ExportEntry>()
+                    .Where(exp => exp.Parent?.ClassName == "Level" && exp.IsA("Actor")).ToArray();
+                int num = actorsToAdd.Length;
+                if (num > 0 && actorsToAdd.First().FileRef.AddToLevelActorsIfNotThere(actorsToAdd))
+                {
+                    return true;
+                }
+
+                return false;
+            }
+
+            void ReindexAllSameNamedObjects(IEntry entry)
+            {
+                string prefixToReindex = entry.ParentInstancedFullPath;
+                string objectname = entry.ObjectName.Name;
+
+                int index = 1; //we'll start at 1.
+                foreach (ExportEntry export in entry.FileRef.Exports)
+                {
+                    //Check object name is the same, the package path count is the same, the package prefix is the same, and the item is not of type Class
+                    if (objectname == export.ObjectName.Name && export.ParentInstancedFullPath == prefixToReindex &&
+                        !export.IsClass)
+                    {
+                        export.indexValue = index;
+                        index++;
+                    }
+                }
+            }
+
+
+            #endregion
+
+            #region SET THE CAMERA ACTOR POSITION AND ROTATION AND FOV
+            // UPDATE THE CAMERA POSITION
+            // This was calculated ages ago since these objects moved in ME2
+
+            // >> Set camera position data ME2
+            var rotPitch = 5704;
+            var rotYaw = 29546;
+            var rotRoll = 309;
+
+            var cameraActorExp = me2EntryMenuPackage.GetUExport(102);
+            var camProps = cameraActorExp.GetProperties();
+            SharedPathfinding.SetLocation(camProps.GetProp<StructProperty>("location"), -4926, 13212, -39964);
+            var rotStruct = camProps.GetProp<StructProperty>("Rotation");
+            rotStruct.GetProp<IntProperty>("Pitch").Value = rotPitch;
+            rotStruct.GetProp<IntProperty>("Yaw").Value = rotYaw;
+            rotStruct.GetProp<IntProperty>("Roll").Value = rotRoll;
+            camProps.AddOrReplaceProp(new FloatProperty(40, "FOVAngle"));
+            cameraActorExp.WriteProperties(camProps);
+            #endregion
+
+            #region Fade in camera control: Zero out changes
+            var fadeInCameraInterpTrackMove = me2EntryMenuPackage.GetUExport(200);
+            fadeInCameraInterpTrackMove.WriteProperty(new EnumProperty("IMF_RelativeToInitial", "EInterpTrackMoveFrame", MEGame.ME2, "MoveFrame"));
+            var properties = fadeInCameraInterpTrackMove.GetProperties();
+            properties.GetProp<StructProperty>("PosTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal").GetProp<FloatProperty>("X").Value = 0f;
+            properties.GetProp<StructProperty>("PosTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal").GetProp<FloatProperty>("Y").Value = 0f;
+            properties.GetProp<StructProperty>("PosTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<StructProperty>("OutVal").GetProp<FloatProperty>("Z").Value = 0f;
+            fadeInCameraInterpTrackMove.WriteProperties(properties);
+
+            // >> Remove the FOV Interp track. Since we are just going to empty it anyways.
+            var fadeInInterpData = me2EntryMenuPackage.GetUExport(173);
+            var fadeInInterpProps = fadeInInterpData.GetProperties();
+            fadeInInterpProps.GetProp<ArrayProperty<ObjectProperty>>("InterpTracks").RemoveAt(0); //Remove the interp track float indice
+            fadeInInterpData.WriteProperties(fadeInInterpProps);
+
+            // >> Sync the initial FOV on the primary interp hold
+            var mainHoldFOVTrackData = me2EntryMenuPackage.GetUExport(199);
+            var mainHoldFOVTrackDataProps = mainHoldFOVTrackData.GetProperties();
+            mainHoldFOVTrackDataProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0].GetProp<FloatProperty>("OutVal").Value = 40; //Initial FOV
+            mainHoldFOVTrackData.WriteProperties(mainHoldFOVTrackDataProps);
+            #endregion
+
+            // options
+            Random random = new Random();
+
+            if (panModeEnabled)
+            {
+                me2EntryMenuPackage.GetUExport(198).RemoveProperty("FloatTrack"); //remove pan up FOV change
+
+                // Make 2 more FOV points on the track
+                var point = mainHoldFOVTrackDataProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0];
+                mainHoldFOVTrackDataProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points").Add(point);
+                mainHoldFOVTrackDataProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points").Add(point);
+                mainHoldFOVTrackData.WriteProperties(mainHoldFOVTrackDataProps);
+                mainHoldFOVTrackDataProps = mainHoldFOVTrackData.GetProperties();
+
+                // Fix inputs, cause i'm lazy
+                //mainHoldFOVTrackDataProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[0]
+                //    .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurveAutoClamped";
+                //mainHoldFOVTrackDataProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1]
+                //    .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurveAutoClamped";
+                //mainHoldFOVTrackDataProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[2]
+                //    .GetProp<EnumProperty>("InterpMode").Value = "CIM_CurveAutoClamped";
+
+
+                //midpoint
+                mainHoldFOVTrackDataProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1]
+                    .GetProp<FloatProperty>("InVal").Value = random.NextFloat(animationLength * 5.0f / 8, animationLength * 7.0f / 8);
+                mainHoldFOVTrackDataProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[1]
+                    .GetProp<FloatProperty>("OutVal").Value = random.NextFloat(35, 70); //FOV at midpoint
+                mainHoldFOVTrackDataProps.GetProp<StructProperty>("FloatTrack").GetProp<ArrayProperty<StructProperty>>("Points")[2]
+                    .GetProp<FloatProperty>("InVal").Value = animationLength; //end timing
+                mainHoldFOVTrackData.WriteProperties(mainHoldFOVTrackDataProps);
+
+
+
+                var holdInterp = me2EntryMenuPackage.GetUExport(170);
+                holdInterp.WriteProperty(new FloatProperty(animationLength, "InterpLength"));
+
+
+                bool ZUp = false;
+                var holdCameraITM = me2EntryMenuPackage.GetUExport(206);
+                var holdCameraITMProps = holdCameraITM.GetProperties();
+                var eulerTrack = holdCameraITMProps.GetProp<StructProperty>("EulerTrack");
+                if (eulerTrack != null)
+                {
+                    // These are some REAL DIRTY HACKS
+                    // So I don't have to WRITE MORE CODE
+                    // hopefully I don't REGRET THIS
+                    var points = eulerTrack.GetProp<ArrayProperty<StructProperty>>("Points"); //On vanilla there will be only one point.
+                    points.Add(points[0]); //Clone the euler track 2 times so we have 3 structs
+                    points.Add(points[0]);
+                    holdCameraITM.WriteProperties(holdCameraITMProps);
+                    // Refresh new props
+                    holdCameraITMProps = holdCameraITM.GetProperties();
+                    eulerTrack = holdCameraITMProps.GetProp<StructProperty>("EulerTrack");
+                    points = eulerTrack.GetProp<ArrayProperty<StructProperty>>("Points");
+
+                    //float startx = random.NextFloat(, -4800);
+                    float startPitch = 0;//random.NextFloat(25, 35);
+                    float startYaw = 0;//random.NextFloat(-195, -160);
+
+                    //startx = 1.736f;
+                    //startPitch = 31.333f;
+                    //startYaw = -162.356f;
+
+                    float peakx = 1.736f; //Roll. We shouldn't change this. This is the default roll
+                    float peakPitch = 0, peakYaw = 0;
+                    peakPitch = 0;
+                    peakYaw = -33;
+
+
+                    if (points != null)
+                    {
+                        int i = 0;
+                        foreach (StructProperty s in points)
+                        {
+                            var outVal = s.GetProp<StructProperty>("OutVal");
+                            if (outVal != null)
+                            {
+                                FloatProperty x = outVal.GetProp<FloatProperty>("X");
+                                FloatProperty y = outVal.GetProp<FloatProperty>("Y");
+                                FloatProperty z = outVal.GetProp<FloatProperty>("Z");
+                                //x.Value = i == 1 ? peakx : startx;
+                                y.Value = i == 1 ? peakPitch : startPitch;
+                                z.Value = i == 1 ? peakYaw : startYaw;
+                            }
+
+                            if (i > 0)
+                            {
+                                s.GetProp<FloatProperty>("InVal").Value = i == 1 ? (animationLength / 2) : animationLength;
+                            }
+
+                            i++;
+                        }
+                    }
+                    holdCameraITM.WriteProperties(holdCameraITMProps);
+                }
+
+                // Disable attract mode in pan mode as it kind of ruins it.
+                KismetHelper.RemoveAllLinks(me2EntryMenuPackage.GetUExport(1005)); //Kill all events from this
+
+                // We need to also suppress the code in SFXGame that will occur
+                // We can issue console command to do this
+                var mainSeq = me2EntryMenuPackage.GetUExport(1014);
+                var consoleCommandStr = "set BioSFHandler_Splash bSuppressAttractMode true";
+                var consoleCommandSeqAct = SequenceObjectCreator.CreateSequenceObject(me2EntryMenuPackage, "SeqAct_ConsoleCommand", MEGame.ME2);
+                consoleCommandSeqAct.WriteProperty(new StrProperty(consoleCommandStr, "Command"));
+                KismetHelper.AddObjectToSequence(consoleCommandSeqAct, mainSeq);
+                KismetHelper.CreateOutputLink(me2EntryMenuPackage.GetUExport(1010), "Out", consoleCommandSeqAct); //Level startup to this
+                KismetHelper.CreateVariableLink(consoleCommandSeqAct, "Target", me2EntryMenuPackage.GetUExport(1059)); // Target to Player
+            }
+            else
+            {
+                // Copy ME1's FOV changes in for pan up
+                EntryImporter.ImportAndRelinkEntries(EntryImporter.PortingOption.ReplaceSingular, me1em.GetUExport(965), me2EntryMenuPackage, me2EntryMenuPackage.GetUExport(198), false, out _); // Copy movement ITM
+            }
+            
+            if (randomTinting)
+            {
+                // Pretty much everything here is from MER
+                var planetMatInst = me2EntryMenuPackage.Exports.FirstOrDefault(x => x.InstancedFullPath == "BIOA_GXM10_T.GXM_Earth");
+
+                if (planetMatInst != null)
+                {
+                    RandomizePlanetMaterialInstanceConstant(planetMatInst, random);
+                }
+
+                var coronaMaterial = me2EntryMenuPackage.Exports.FirstOrDefault(x => x.InstancedFullPath == "BIOA_GXM10_T.Instances.GXM_Corona_Splash");
+                if (coronaMaterial != null)
+                {
+                    var props = coronaMaterial.GetProperties();
+                    {
+                        var scalars = props.GetProp<ArrayProperty<StructProperty>>("ScalarParameterValues");
+                        var vectors = props.GetProp<ArrayProperty<StructProperty>>("VectorParameterValues");
+                        scalars[0].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(0.01f, 0.05f); //Bloom
+                        scalars[1].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(1, 10); //Opacity
+                        RandomizeTint(random, vectors[0].GetProp<StructProperty>("ParameterValue"), false, false);
+                    }
+                    coronaMaterial.WriteProperties(props);
+                }
+            }
+
+            
+            me2EntryMenuPackage.Save(@"D:\Origin Games\Mass Effect 2\BioGame\CookedPC\EntryMenu.pcc");
+            Process.Start(@"D:\Origin Games\Mass Effect 2\Binaries\MassEffect2.exe");
+        }
+
+        // Ported from MER
+        private static void RandomizePlanetMaterialInstanceConstant(ExportEntry planetMaterial, Random random)
+        {
+            var props = planetMaterial.GetProperties();
+            {
+                var scalars = props.GetProp<ArrayProperty<StructProperty>>("ScalarParameterValues");
+                var vectors = props.GetProp<ArrayProperty<StructProperty>>("VectorParameterValues");
+                scalars[0].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(0, 1.0f); //Horizon Atmosphere Intensity
+                if (random.Next(4) == 0)
+                {
+                    scalars[2].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(0, 0.7f); //Atmosphere Min (how gas-gianty it looks)
+                }
+                else
+                {
+                    scalars[2].GetProp<FloatProperty>("ParameterValue").Value = 0; //Atmosphere Min (how gas-gianty it looks)
+                }
+
+                scalars[3].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(.5f, 1.5f); //Atmosphere Tiling U
+                scalars[4].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(.5f, 1.5f); //Atmosphere Tiling V
+                scalars[5].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(.5f, 4f); //Atmosphere Speed
+                scalars[6].GetProp<FloatProperty>("ParameterValue").Value = random.NextFloat(0.5f, 12f); //Atmosphere Fall off...? seems like corona intensity
+
+                foreach (var vector in vectors)
+                {
+                    var paramValue = vector.GetProp<StructProperty>("ParameterValue");
+                    RandomizeTint(random, paramValue, false, false);
+                }
+            }
+            planetMaterial.WriteProperties(props);
+        }
+
+
+        // Ported from MER
         private static void RandomizeTint(Random random, StructProperty tint, bool randomizeAlpha, bool additive)
         {
             var a = tint.GetProp<FloatProperty>("A");

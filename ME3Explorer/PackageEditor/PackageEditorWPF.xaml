@@ -99,6 +99,7 @@
         <KeyBinding Key="Left" Modifiers="Alt" Command="{Binding TabLeftCommand}"/>
         <KeyBinding Key="P" Modifiers="Ctrl" Command="{Binding PopoutCurrentViewCommand}"/>
         <KeyBinding Key="A" Modifiers="Ctrl+Shift" Command="{Binding AddNameCommand}"/>
+        <KeyBinding Key="R" Modifiers="Ctrl" Command="{Binding  BuildSplashExperimentCommand}"/>
     </Window.InputBindings>
     <xctk:BusyIndicator IsBusy="{Binding Path=IsBusy}" BusyContent="{Binding BusyText}">
         <DockPanel>
