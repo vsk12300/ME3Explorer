@@ -41,7 +41,7 @@ namespace ME3Explorer.PackageEditor.Experiments
 
             // Options
             bool panModeEnabled = true;
-            bool randomTinting = true;
+            bool randomTinting = false;
             var animationLength = 80; //how long a pan and back takes
             var mipFadeInDelay = 1f; //how long to black screen to let the mips stream in on start. .5s is too little
             var fireTrails = false; //ME3 ONLY. WIP
@@ -80,6 +80,7 @@ namespace ME3Explorer.PackageEditor.Experiments
             itemsToPort.Add(me3UncPlanet); //UNC53Planet
             itemsToPort.Add(biopChar.GetUExport(6279)); //Corona
             itemsToPort.Add(biopChar.GetUExport(6280)); //GXMPlanet
+            itemsToPort.Add(biopChar.GetUExport(28467)); //The corona nebula
             itemsToPort.Add(lightCollectionExp); //Lights. Might need to cut down on these as it affects main menu too
 
             ExportEntry newLightCollection = null;
@@ -147,7 +148,7 @@ namespace ME3Explorer.PackageEditor.Experiments
             var panUpITF = entryMenuPackage.GetUExport(194); //FOV
             // Just port this from the ME2 file. It'll be much easier
 
-            using var me2em = MEPackageHandler.OpenMEPackage(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"Bioware\Mass Effect 2\BIOGame\Published\CookedPC\entrymenu.pcc"));
+            using var me2em = MEPackageHandler.OpenMEPackage(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), @"Bioware\Mass Effect 2\BIOGame\Published\CookedPC\entrymenu-REMIXFINAL.pcc"));
             EntryImporter.ImportAndRelinkEntries(EntryImporter.PortingOption.ReplaceSingular, me2em.GetUExport(198), entryMenuPackage, panUpITF, true, out _); // Copy FOV ITF
             EntryImporter.ImportAndRelinkEntries(EntryImporter.PortingOption.ReplaceSingular, me2em.GetUExport(205), entryMenuPackage, panUpITM, true, out _); // Copy movement ITM
             EntryImporter.ImportAndRelinkEntries(EntryImporter.PortingOption.ReplaceSingular, me2em.GetUExport(205), entryMenuPackage, panUpITM, true, out _); // Copy movement ITM
