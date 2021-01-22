@@ -189,8 +189,8 @@ namespace ME3Explorer.Unreal.Classes
                         mipmap.storageType = StorageTypes.extLZO;
 
                     // TEXTURE WORK BRANCH TOOLING ONLY!!
-                    //if (mipmap.storageType == StorageTypes.extLZO)
-                    //    mipmap.storageType = StorageTypes.pccLZO;
+                    if (mipmap.storageType == StorageTypes.extLZO)
+                        mipmap.storageType = StorageTypes.pccLZO;
                 }
 
 
