@@ -527,9 +527,10 @@ namespace LegendaryExplorer.Tools.TlkManagerNS
         private static void LE3ReloadTLKStringsAsync(List<LoadedTLK> tlksToLoad)
         {
             LE3TalkFiles.ClearLoadedTlks();
-
+            int count = 0;
             foreach (LoadedTLK tlk in tlksToLoad)
             {
+                Console.WriteLine(count++);
                 LE3TalkFiles.LoadTlkData(tlk.tlkPath);
             }
             LE3LastReloaded = $"{DateTime.Now:HH:mm:ss tt}";
@@ -593,7 +594,9 @@ namespace LegendaryExplorer.Tools.TlkManagerNS
             ME1TalkFiles.tlkList.Clear();
             Task.Run(() =>
             {
+                //var tlkfiles = Directory.EnumerateFiles(ME1Directory.DefaultGamePath,, SearchOption.AllDirectories).ToList();
                 var tlkfiles = Directory.EnumerateFiles(ME1Directory.DefaultGamePath, "*Tlk*", SearchOption.AllDirectories).ToList();
+                Console.WriteLine($"{tlkfiles.Count}개의 파일");
                 var tlks = new List<LoadedTLK>();
                 foreach (string tlk in tlkfiles)
                 {
@@ -674,7 +677,9 @@ namespace LegendaryExplorer.Tools.TlkManagerNS
             LE1TalkFiles.tlkList.Clear();
             Task.Run(() =>
             {
-                var tlkfiles = Directory.EnumerateFiles(LE1Directory.DefaultGamePath, "Startup_*", SearchOption.AllDirectories).ToList();
+                //var tlkfiles = Directory.EnumerateFiles(LE1Directory.DefaultGamePath, "*_LOC_INT.pcc", SearchOption.AllDirectories).ToList();
+                var tlkfiles = Directory.EnumerateFiles(LE1Directory.DefaultGamePath, "*BIOA_WAR20_07_DSG_LOC_INT*", SearchOption.AllDirectories).ToList();
+                Console.WriteLine($"{tlkfiles.Count}의 대상 파일을 찾았습니다.");
                 var tlks = new List<LoadedTLK>();
                 foreach (string tlk in tlkfiles)
                 {
@@ -682,7 +687,7 @@ namespace LegendaryExplorer.Tools.TlkManagerNS
                     {
                         foreach (ExportEntry exp in upk.Exports.Where(exp => exp.ClassName == "BioTlkFile"))
                         {
-                            tlks.Add(new LoadedTLK(tlk, exp.UIndex, exp.ObjectName, false));
+                            tlks.Add(new LoadedTLK(tlk, exp.UIndex, exp.ObjectName, false, exp.SuperClassName));
                         }
                     }
                     //these startup files are LARGE. If they aren't forcibly cleared out every iteration, memory usage jumps to > 3 GBs
@@ -771,6 +776,8 @@ namespace LegendaryExplorer.Tools.TlkManagerNS
             public string exportName { get; set; }
             public int mountpriority { get; set; }
 
+            public string insidePath { get; set; }
+
             private bool _selectedForLoad;
             public bool selectedForLoad
             {
@@ -795,6 +802,17 @@ namespace LegendaryExplorer.Tools.TlkManagerNS
                 this.selectedForLoad = selectedForLoad;
             }
 
+            public LoadedTLK(string tlkPath, int exportNumber, string exportName, bool selectedForLoad, string insidePath)
+            {
+                this.exportNumber = exportNumber;
+                this.embedded = true;
+                this.tlkPath = tlkPath;
+                this.exportName = exportName;
+                this.tlkDisplayPath = $"{exportName} - {System.IO.Path.GetFileName(tlkPath)}";
+                this.selectedForLoad = selectedForLoad;
+                this.insidePath = insidePath;
+
+            }
             /// <summary>
             /// Loads the mount.dlc file in the same directory as the TLK file and assigns it to this object, which can be used for sorting.
             /// If the mount.dlc file is not found, the default value of 0 is used (basegame).
@@ -877,6 +895,7 @@ namespace LegendaryExplorer.Tools.TlkManagerNS
             tlkLang += ".tlk";
             foreach (LoadedTLK tlk in ME3TLKItems)
             {
+             
                 tlk.selectedForLoad = tlk.tlkPath.EndsWith(tlkLang);
             }
             Debug.WriteLine("loaded");
@@ -895,6 +914,7 @@ namespace LegendaryExplorer.Tools.TlkManagerNS
         private void SelectLoadedTLKsLE1()
         {
             var tlkLang = ((ComboBoxItem)LE1TLKLangCombobox.SelectedItem).Content.ToString();
+            var count = 0;
             bool male = tlkLang.EndsWith("Male");
             if (male)
             {
@@ -913,11 +933,17 @@ namespace LegendaryExplorer.Tools.TlkManagerNS
             {
                 tlkLang = "INT.pcc";
             }
-
+            /*foreach (LoadedTLK tlk in LE1TLKItems)
+            {
+                Console.WriteLine($"전체 {LE1TLKItems.Count} 중 {count++}째 실행중");
+               tlk.selectedForLoad = ((tlk.exportName.EndsWith("_M") && male) || (!tlk.exportName.EndsWith("_M") && !male)) && tlk.tlkPath.EndsWith(tlkLang);
+            }*/
             foreach (LoadedTLK tlk in LE1TLKItems)
             {
-                tlk.selectedForLoad = ((tlk.exportName.EndsWith("_M") && male) || (!tlk.exportName.EndsWith("_M") && !male)) && tlk.tlkPath.EndsWith(tlkLang);
+                Debug.WriteLine($"전체 {LE1TLKItems.Count} 중 {count++}째 실행중");
+                tlk.selectedForLoad = (tlk.tlkPath.EndsWith(tlkLang));
             }
+         
         }
 
         private void SelectLoadedTLKsLE3()

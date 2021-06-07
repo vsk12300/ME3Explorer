@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using LegendaryExplorerCore.Helpers;
 using LegendaryExplorerCore.Misc;
@@ -97,7 +98,11 @@ namespace LegendaryExplorerCore.GameFilesystem
                     {
                         return null;
                     }
-                    _DefaultGamePath = Path.Combine(LegendaryExplorerCoreLibSettings.Instance.LEDirectory, "Game", "ME3");
+                    //C:\Program Files (x86)\Steam\steamapps\common\Mass Effect Legendary Edition
+                    Console.WriteLine(Environment.GetEnvironmentVariable("ProgramFiles(x86)") + "\\Steam\\steamapps\\common\\Mass Effect Legendary Edition");
+                    _DefaultGamePath = "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Mass Effect Legendary Edition\\Game\\ME3";
+                    //_DefaultGamePath = Path.Combine(DefaultGamePath, "common", "Game", "ME3");
+                    _DefaultGamePath = Path.Combine("C:/","ProgramFiles (x86)/", "Steam/","steamapps/","common/", "Mass Effect Legendary Edition/", "common/", "Game/", "ME3/");
                 }
                 return Path.GetFullPath(_DefaultGamePath); //normalize
             }

@@ -491,7 +491,7 @@ namespace LegendaryExplorer.Tools.AssetDatabase
             {
                 CurrentDataBase.Lines.Clear();
             }
-
+            
             await using (var fileStream = new FileStream(CurrentDBPath, FileMode.Create))
             {
                 using (var archive = new ZipArchive(fileStream, ZipArchiveMode.Create, true))

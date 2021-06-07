@@ -109,7 +109,7 @@ namespace LegendaryExplorerCore.GameFilesystem
                     {
                         return null;
                     }
-                    _gamePath = Path.Combine(LegendaryExplorerCoreLibSettings.Instance.LEDirectory, "Game", "ME1");
+                    _gamePath = Path.Combine("C:/", "Program Files (x86)/", "Steam/", "steamapps/", "common/", "Mass Effect Legendary Edition/", "Game/", "ME1/");
                 }
 
                 return Path.GetFullPath(_gamePath); //normalize

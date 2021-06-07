@@ -119,7 +119,7 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
         private bool CanSaveString(object obj)
         {
             if (DisplayedString_ListBox == null) return false;
-            var selectedItem = DisplayedString_ListBox.SelectedItem as ME1TalkFile.TLKStringRef;
+            var selectedItem = DisplayedString_ListBox.SelectedItem as LE1TalkFile.TLKStringRef;
             return selectedItem?.Data != null && EditorString != selectedItem.Data;
         }
 
