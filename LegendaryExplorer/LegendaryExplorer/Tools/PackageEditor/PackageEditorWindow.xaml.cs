@@ -3910,5 +3910,9 @@ namespace LegendaryExplorer.Tools.PackageEditor
 
         public string Toolname => "PackageEditor";
 
+        private void TlkEditorTab_TlkEditor_Loaded(object sender, RoutedEventArgs e)
+        {
+
+        }
     }
 }

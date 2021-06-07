@@ -105,6 +105,7 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
             FileModified = false;
         }
 
+        //텍스트와 에디터 동기화 하는 파트
         private void SaveString(object obj)
         {
             if (DisplayedString_ListBox.SelectedItem is ME1TalkFile.TLKStringRef selectedItem)
@@ -112,6 +113,7 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
                 selectedItem.Data = EditorString;
                 FileModified = true;
             }
+   
         }
 
         private string EditorString => editBox.Text.Trim().Replace("\r\n", "\n");
@@ -119,7 +121,7 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
         private bool CanSaveString(object obj)
         {
             if (DisplayedString_ListBox == null) return false;
-            var selectedItem = DisplayedString_ListBox.SelectedItem as LE1TalkFile.TLKStringRef;
+            var selectedItem = DisplayedString_ListBox.SelectedItem as ME1TalkFile.TLKStringRef;
             return selectedItem?.Data != null && EditorString != selectedItem.Data;
         }
 
@@ -505,12 +507,17 @@ namespace LegendaryExplorer.UserControls.ExportLoaderControls
             if (e.Key == Key.Enter && Keyboard.Modifiers != ModifierKeys.Shift)
             {
                 e.Handled = true;
+                if (CanSaveString(null))
+                {
+                    SaveString(null);
+                }
+                if(CanCommitTLK(null))
+                {
+                    CommitTLK(null);
+                }
             }
 
-            if (CanSaveString(null))
-            {
-                SaveString(null);
-            }
+          /* */
         }
     }
 }

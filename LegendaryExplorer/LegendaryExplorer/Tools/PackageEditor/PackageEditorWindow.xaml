@@ -426,6 +426,12 @@
                                                      Visibility="{Binding Pcc, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type bases:WPFBase}},Converter={StaticResource NullVisibilityConverter}, ConverterParameter='Reversed'}"/>
                         </StackPanel>
                     </TabItem>
+                    <TabItem Name="TlkEditor_Tab" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}">
+                        <TabItem.Header>
+                            <TextBlock Text="Talktable" ToolTip="Edit entries in this BioTLKFile"/>
+                        </TabItem.Header>
+                        <exportLoaderControls:TLKEditor x:Name="TlkEditorTab_TlkEditor" Loaded="TlkEditorTab_TlkEditor_Loaded"/>
+                    </TabItem>
                     <TabItem Name="Interpreter_Tab" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}">
                         <TabItem.Header>
                             <TextBlock Text="Interpreter" ToolTip="Edit UnrealScript properties on exports"/>
@@ -498,12 +504,6 @@
                             <TextBlock Text="Scaleform" ToolTip="Launch embedded files in external tools"/>
                         </TabItem.Header>
                         <exportLoaderControls:JPEXExternalExportLoader x:Name="JPEXLauncherTab_JPEXLauncher"/>
-                    </TabItem>
-                    <TabItem Name="TlkEditor_Tab" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}">
-                        <TabItem.Header>
-                            <TextBlock Text="Talktable" ToolTip="Edit entries in this BioTLKFile"/>
-                        </TabItem.Header>
-                        <exportLoaderControls:TLKEditor x:Name="TlkEditorTab_TlkEditor"/>
                     </TabItem>
                     <TabItem Name="MaterialViewer_Tab" IsEnabled="{Binding Pcc, Converter={StaticResource NullEnabledConverter}}">
                         <TabItem.Header>
